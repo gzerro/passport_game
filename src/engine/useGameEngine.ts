@@ -107,10 +107,10 @@ export const useGameEngine = (): UseGameEngineResult => {
     let cancelled = false;
     let phaseTimeout: number | null = null;
     let countdownInterval: number | null = null;
-    let finishedStageTimeout: number | null = null;
 
     const bettingMs = gameConfig.phases.bettingDurationSec * 1000;
     const resolvingMs = gameConfig.phases.resolvingDurationSec * 1000;
+    const finishedMs = gameConfig.phases.finishedIndicatorDurationMs;
 
     const updateCountdown = (phaseEndsAt: number): void => {
       if (cancelled) {
@@ -133,16 +133,14 @@ export const useGameEngine = (): UseGameEngineResult => {
       }, 250);
     };
 
-    const startBettingPhase = (activeRoundId: number, forceBettingStage: boolean): void => {
+    const startBettingPhase = (activeRoundId: number): void => {
       if (cancelled) {
         return;
       }
 
       setRoundId(activeRoundId);
       setPhase('betting');
-      if (forceBettingStage) {
-        setStage('betting');
-      }
+      setStage('betting');
 
       const phaseEndsAt = Date.now() + bettingMs;
       startCountdown(phaseEndsAt);
@@ -240,21 +238,18 @@ export const useGameEngine = (): UseGameEngineResult => {
         setSelectedSide(null);
       }
 
+      setPhase('finished');
       setStage('finished');
-      if (finishedStageTimeout !== null) {
-        window.clearTimeout(finishedStageTimeout);
-      }
 
-      finishedStageTimeout = window.setTimeout(() => {
-        if (!cancelled) {
-          setStage('betting');
-        }
-      }, gameConfig.phases.finishedIndicatorDurationMs);
+      const phaseEndsAt = Date.now() + finishedMs;
+      startCountdown(phaseEndsAt);
 
-      startBettingPhase(activeRoundId + 1, false);
+      phaseTimeout = window.setTimeout(() => {
+        startBettingPhase(activeRoundId + 1);
+      }, finishedMs);
     };
 
-    startBettingPhase(getNextRoundId(storedHistory), true);
+    startBettingPhase(getNextRoundId(storedHistory));
 
     return () => {
       cancelled = true;
@@ -266,14 +261,10 @@ export const useGameEngine = (): UseGameEngineResult => {
       if (countdownInterval !== null) {
         window.clearInterval(countdownInterval);
       }
-
-      if (finishedStageTimeout !== null) {
-        window.clearTimeout(finishedStageTimeout);
-      }
     };
   }, [storedHistory]);
 
-  const controlsDisabled = phase === 'resolving';
+  const controlsDisabled = phase !== 'betting';
 
   const potentialPayout = selectedSide ? Math.round(currentBet * gameConfig.coefficients[selectedSide]) : 0;
   const netProfit = potentialPayout - currentBet;

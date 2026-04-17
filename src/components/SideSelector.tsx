@@ -21,10 +21,8 @@ export const SideSelector = ({
   onSelect,
 }: SideSelectorProps) => {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="mb-3 text-xs text-slate-500">Сделай ставку и выбери исход</p>
-
-      <div className="grid grid-cols-2 gap-3">
+    <div className="w-full">
+      <div className="grid grid-cols-2 gap-3 md:gap-4">
         {sides.map((side) => {
           const selected = selectedSide === side.id;
 
@@ -35,15 +33,15 @@ export const SideSelector = ({
               disabled={disabled}
               onClick={() => onSelect(side.id)}
               className={[
-                'relative rounded-2xl border px-4 py-3 text-left transition',
+                'relative rounded-2xl border px-4 py-3 text-left transition md:px-5 md:py-4',
                 disabled ? 'cursor-not-allowed opacity-60' : 'active:scale-[0.99]',
                 selected
                   ? 'border-sky-500 bg-sky-50 text-sky-700 shadow-sm'
-                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300',
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
               ].join(' ')}
             >
-              <p className="text-base font-bold">{side.label}</p>
-              <p className="text-xs">Коэф. x{formatCoefficient(coefficients[side.id])}</p>
+              <p className="text-base font-bold md:text-lg">{side.label}</p>
+              <p className="text-xs md:text-sm">Коэф. x{formatCoefficient(coefficients[side.id])}</p>
               {hintedSide === side.id ? (
                 <img
                   src={handImageSrc}
@@ -56,6 +54,6 @@ export const SideSelector = ({
           );
         })}
       </div>
-    </section>
+    </div>
   );
 };

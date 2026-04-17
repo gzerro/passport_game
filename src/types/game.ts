@@ -1,4 +1,4 @@
-export type GamePhase = 'betting' | 'resolving';
+export type GamePhase = 'betting' | 'resolving' | 'finished';
 
 export type StageIndicator = 'betting' | 'resolving' | 'finished';
 
