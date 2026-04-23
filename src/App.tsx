@@ -1,17 +1,42 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AncientObjectStage } from './components/AncientObjectStage';
 import { BalanceTopUpModal } from './components/BalanceTopUpModal';
 import { BetControls } from './components/BetControls';
 import { HistoryPanel } from './components/HistoryPanel';
 import { RoundStatusPanel } from './components/RoundStatusPanel';
-import { SideSelector } from './components/SideSelector';
+import { objectCatalog } from './config/objectCatalog';
 import { gameConfig } from './config/gameConfig';
 import { useGameEngine } from './engine/useGameEngine';
-import { BetSide } from './types/game';
+import { BetSide, HistoryEntry } from './types/game';
+
+const fallbackObjectId = 'sarcophagus';
+
+const loreSideLabels: Record<BetSide, string> = {
+  yes: 'Свет',
+  no: 'Тьма',
+};
+
+const pickRandomObjectId = (): string => {
+  if (objectCatalog.length === 0) {
+    return fallbackObjectId;
+  }
+
+  if (objectCatalog.length === 1) {
+    return objectCatalog[0];
+  }
+
+  const randomIndex = Math.floor(Math.random() * objectCatalog.length);
+  return objectCatalog[randomIndex];
+};
+
+const getCurrentRoundEntry = (entries: HistoryEntry[], roundId: number): HistoryEntry | null =>
+  entries.find((entry) => entry.roundId === roundId) ?? null;
 
 const App = () => {
   const {
     stage,
     secondsLeft,
+    roundId,
     balance,
     history,
     selectedSide,
@@ -21,6 +46,7 @@ const App = () => {
     controlsDisabled,
     canAddBet,
     canResetBet,
+    lastRoundReveal,
     selectSide,
     selectChip,
     addBet,
@@ -28,14 +54,12 @@ const App = () => {
     topUpBalance,
   } = useGameEngine();
 
-  const sideLabels = useMemo(
-    () =>
-      Object.fromEntries(gameConfig.sides.map((side) => [side.id, side.label])) as Record<BetSide, string>,
-    [],
-  );
   const [isTopUpOpen, setIsTopUpOpen] = useState<boolean>(false);
   const [hintedSide, setHintedSide] = useState<BetSide | null>(null);
+  const [currentObjectId, setCurrentObjectId] = useState<string>(() => objectCatalog[0] ?? fallbackObjectId);
+
   const previousBalanceRef = useRef<number | null>(null);
+  const objectRoundRef = useRef<number | null>(null);
 
   useEffect(() => {
     const previousBalance = previousBalanceRef.current;
@@ -66,54 +90,67 @@ const App = () => {
     };
   }, [controlsDisabled, currentBet, selectedSide]);
 
+  useEffect(() => {
+    if (stage !== 'betting') {
+      return;
+    }
+
+    if (objectRoundRef.current === roundId) {
+      return;
+    }
+
+    objectRoundRef.current = roundId;
+    setCurrentObjectId(pickRandomObjectId());
+  }, [roundId, stage]);
+
+  const currentRoundEntry = useMemo(() => getCurrentRoundEntry(history, roundId), [history, roundId]);
+
   return (
-    <div className="h-[100dvh] overflow-hidden bg-slate-100 text-slate-900">
-      <div className="mx-auto flex h-full w-full max-w-[760px] flex-col overflow-hidden md:px-4 md:py-4">
-        <div className="flex h-full min-h-0 flex-col overflow-hidden md:rounded-3xl md:border md:border-slate-200 md:bg-white/70 md:shadow-sm">
-          <header className="shrink-0 px-3 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-2 md:px-4 md:pt-4 md:pb-3">
-            <HistoryPanel entries={history} sideLabels={sideLabels} />
+    <div className="app-root w-full max-w-full overflow-hidden bg-[#100d09] text-[#f2e5c0]">
+      <div className="app-frame">
+        <div className="ritual-shell app-shell app-shell-grid overflow-hidden">
+          <header className="app-header min-w-0 space-y-1">
+            <HistoryPanel entries={history} sideLabels={loreSideLabels} />
           </header>
 
-          <div className="shrink-0 px-3 pb-2 md:px-4 md:pb-3">
-            <RoundStatusPanel
-              stage={stage}
-              secondsLeft={secondsLeft}
-              balance={balance}
-              onBalanceClick={() => setIsTopUpOpen(true)}
-            />
-          </div>
+          <RoundStatusPanel
+            stage={stage}
+            secondsLeft={secondsLeft}
+            balance={balance}
+            onBalanceClick={() => setIsTopUpOpen(true)}
+          />
 
-          <main className="min-h-0 flex-1 px-3 pb-3 md:px-4 md:pb-4">
-            <div className="flex h-full items-center justify-center">
-              <div className="w-full max-w-[560px]">
-                <SideSelector
-                  sides={gameConfig.sides}
-                  selectedSide={selectedSide}
-                  hintedSide={hintedSide}
-                  coefficients={gameConfig.coefficients}
-                  disabled={controlsDisabled}
-                  onSelect={selectSide}
-                />
-              </div>
+          <main className="app-main min-h-0">
+            <div className="app-main-grid">
+              <AncientObjectStage
+                stage={stage}
+                objectId={currentObjectId}
+                currentRoundEntry={currentRoundEntry}
+                currentRoundResult={currentRoundEntry?.roundResult ?? (lastRoundReveal?.roundId === roundId ? lastRoundReveal.result : null)}
+                selectedSide={selectedSide}
+                hintedSide={hintedSide}
+                coefficients={gameConfig.coefficients}
+                disabled={controlsDisabled}
+                onSelect={selectSide}
+                currentBet={currentBet}
+              />
             </div>
           </main>
 
-          <footer className="shrink-0 border-t border-slate-200 bg-white/95 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(15,23,42,0.08)] md:bg-transparent md:px-4 md:py-4 md:shadow-none">
-            <div className="mx-auto w-full max-w-[620px]">
-              <BetControls
-                chips={gameConfig.chips}
-                selectedChip={selectedChip}
-                currentBet={currentBet}
-                potentialPayout={selectedSide ? potentialPayout : 0}
-                showAddBetHint={currentBet === 0 && canAddBet}
-                disabled={controlsDisabled}
-                canAddBet={canAddBet}
-                canResetBet={canResetBet}
-                onSelectChip={selectChip}
-                onAddBet={addBet}
-                onResetBet={resetBet}
-              />
-            </div>
+          <footer className="app-footer">
+            <BetControls
+              chips={gameConfig.chips}
+              selectedChip={selectedChip}
+              currentBet={currentBet}
+              potentialPayout={selectedSide ? potentialPayout : 0}
+              showAddBetHint={currentBet === 0 && canAddBet}
+              disabled={controlsDisabled}
+              canAddBet={canAddBet}
+              canResetBet={canResetBet}
+              onSelectChip={selectChip}
+              onAddBet={addBet}
+              onResetBet={resetBet}
+            />
           </footer>
         </div>
       </div>

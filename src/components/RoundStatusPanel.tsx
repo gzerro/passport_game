@@ -10,36 +10,40 @@ interface RoundStatusPanelProps {
 
 const getStageBadge = (stage: StageIndicator): { label: string; className: string } => {
   if (stage === 'resolving') {
-    return { label: 'Идет игра', className: 'bg-amber-100 text-amber-700' };
+    return { label: 'Идет ритуал', className: 'border-[#d9b871a8] bg-[#4d391dcf] text-[#f7e1ad]' };
   }
 
   if (stage === 'finished') {
-    return { label: 'Итоги', className: 'bg-emerald-100 text-emerald-700' };
+    return { label: 'Итоги', className: 'border-[#89ab72a8] bg-[#283924d4] text-[#d6efca]' };
   }
 
-  return { label: 'Ожидание', className: 'bg-slate-100 text-slate-600' };
+  return { label: 'Ожидание', className: 'border-[#b8945f94] bg-[#312314d4] text-[#e8d1a1]' };
 };
 
 export const RoundStatusPanel = ({ stage, secondsLeft, balance, onBalanceClick }: RoundStatusPanelProps) => {
   const stageBadge = getStageBadge(stage);
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <div className="justify-self-start">
-          <p className="text-3xl font-bold tabular-nums text-slate-900">{formatCountdown(secondsLeft)}</p>
-        </div>
+    <section className="ritual-panel framed-panel status-panel rounded-[14px] px-2.5 py-1.5">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+        <p className="status-timer text-[1.5rem] font-extrabold tabular-nums leading-none tracking-[0.02em] text-[#f8e7bc]">{formatCountdown(secondsLeft)}</p>
 
-        <span className={['rounded-full px-3 py-1 text-xs font-semibold', stageBadge.className].join(' ')}>
+        <span
+          className={[
+            'status-stage max-w-full justify-self-center truncate rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em]',
+            stageBadge.className,
+          ].join(' ')}
+        >
           {stageBadge.label}
         </span>
 
         <button
           type="button"
           onClick={onBalanceClick}
-          className="justify-self-end rounded-full bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 transition active:scale-[0.99]"
+          className="status-balance rounded-full border border-[#dabd7e8c] bg-[#2f2416dd] px-3 py-1 text-right text-[11px] font-bold text-[#f4e2b7] transition active:scale-[0.98]"
+          aria-label="Баланс"
         >
-          Баланс: {formatNumber(balance)}
+          {formatNumber(balance)}
         </button>
       </div>
     </section>
