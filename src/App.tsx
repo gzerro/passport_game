@@ -173,20 +173,10 @@ const GameScreen = () => {
   const [currentObjectId, setCurrentObjectId] = useState<string>(() => objectCatalog[0] ?? fallbackObjectId);
   const [showRoundTransitionFlash, setShowRoundTransitionFlash] = useState<boolean>(false);
 
-  const previousBalanceRef = useRef<number | null>(null);
   const objectRoundRef = useRef<number | null>(null);
   const previousStageRef = useRef<StageIndicator>(stage);
+  const previousTopUpStageRef = useRef<StageIndicator>(stage);
   const currentObjectIdRef = useRef<string>(currentObjectId);
-
-  useEffect(() => {
-    const previousBalance = previousBalanceRef.current;
-
-    if (balance === 0 && (previousBalance === null || previousBalance > 0)) {
-      setIsTopUpOpen(true);
-    }
-
-    previousBalanceRef.current = balance;
-  }, [balance]);
 
   useEffect(() => {
     if (stage !== 'betting') {
@@ -205,6 +195,16 @@ const GameScreen = () => {
   useEffect(() => {
     currentObjectIdRef.current = currentObjectId;
   }, [currentObjectId]);
+
+  useEffect(() => {
+    const previousStage = previousTopUpStageRef.current;
+
+    if (previousStage === 'finished' && stage === 'betting' && balance <= 0) {
+      setIsTopUpOpen(true);
+    }
+
+    previousTopUpStageRef.current = stage;
+  }, [balance, stage]);
 
   useEffect(() => {
     let flashTimeout: number | null = null;

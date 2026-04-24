@@ -170,8 +170,6 @@ export const useGameEngine = (): UseGameEngineResult => {
           coefficient: gameConfig.coefficients[side],
           roundResult: hiddenResult,
         };
-
-        setBalance((prevBalance) => Math.max(0, prevBalance - betAmount));
       } else {
         pendingParticipationRef.current = null;
       }
@@ -205,10 +203,7 @@ export const useGameEngine = (): UseGameEngineResult => {
         const isWin = participation.selectedSide === participation.roundResult;
         const payout = isWin ? Math.round(participation.betAmount * participation.coefficient) : 0;
         const balanceDelta = payout - participation.betAmount;
-
-        if (payout > 0) {
-          setBalance((prevBalance) => prevBalance + payout);
-        }
+        setBalance((prevBalance) => Math.max(0, prevBalance + balanceDelta));
 
         const entry: HistoryEntry = {
           id: `${participation.roundId}-${Date.now()}`,
