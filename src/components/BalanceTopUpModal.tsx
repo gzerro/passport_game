@@ -65,7 +65,7 @@ export const BalanceTopUpModal = ({
 
         <div className="mt-3 rounded-2xl border border-[#b6955f59] bg-[#281f14db] px-3 py-3">
           <p className="text-xs uppercase tracking-[0.14em] text-[#ba9f6c]">Сумма</p>
-          <p className="mt-1 text-2xl font-bold text-[#f8e8bf]">{formatNumber(amount)}</p>
+          <p className="num-grobold mt-1 text-2xl font-bold text-[#f8e8bf]">{formatNumber(amount)}</p>
         </div>
 
         <input
@@ -79,8 +79,8 @@ export const BalanceTopUpModal = ({
         />
 
         <div className="mt-1 flex items-center justify-between text-[11px] text-[#cdbb8f]">
-          <span>{formatNumber(minAmount)}</span>
-          <span>{formatNumber(maxAmount)}</span>
+          <span className="num-grobold">{formatNumber(minAmount)}</span>
+          <span className="num-grobold">{formatNumber(maxAmount)}</span>
         </div>
 
         <button

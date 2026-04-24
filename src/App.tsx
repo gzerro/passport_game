@@ -7,9 +7,11 @@ import { RoundStatusPanel } from './components/RoundStatusPanel';
 import { objectCatalog } from './config/objectCatalog';
 import { gameConfig } from './config/gameConfig';
 import { useGameEngine } from './engine/useGameEngine';
-import { BetSide, HistoryEntry } from './types/game';
+import { BetSide, HistoryEntry, StageIndicator } from './types/game';
 
 const fallbackObjectId = 'sarcophagus';
+const bootLoaderStorageKey = 'the-sarcophagus.bootSeen.v1';
+const bootLoaderTimeoutMs = 4_000;
 
 const loreSideLabels: Record<BetSide, string> = {
   yes: 'Свет',
@@ -32,7 +34,120 @@ const pickRandomObjectId = (): string => {
 const getCurrentRoundEntry = (entries: HistoryEntry[], roundId: number): HistoryEntry | null =>
   entries.find((entry) => entry.roundId === roundId) ?? null;
 
-const App = () => {
+const preloadImage = (src: string): Promise<void> =>
+  new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve();
+    image.onerror = () => resolve();
+    image.src = src;
+  });
+
+const preloadFont = (family: string): Promise<void> => {
+  if (typeof document === 'undefined' || !('fonts' in document)) {
+    return Promise.resolve();
+  }
+
+  return document.fonts.load(`16px "${family}"`).then(
+    () => undefined,
+    () => undefined,
+  );
+};
+
+const waitForNextPaint = (): Promise<void> =>
+  new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
+    });
+  });
+
+const hasSeenBootLoader = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    return window.localStorage.getItem(bootLoaderStorageKey) === '1';
+  } catch {
+    return false;
+  }
+};
+
+const markBootLoaderSeen = (): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(bootLoaderStorageKey, '1');
+  } catch {
+    // no-op if storage is blocked
+  }
+};
+
+const getBootAssetSources = (basePath: string): string[] => {
+  const sharedAssets = [
+    `${basePath}${encodeURI('фон.png')}`,
+    `${basePath}${encodeURI('подложка под таймер.png')}`,
+    `${basePath}info.png`,
+    `${basePath}coin.png`,
+    `${basePath}${encodeURI('поставить .png')}`,
+    `${basePath}yes.png`,
+    `${basePath}no.png`,
+    `${basePath}man.png`,
+    `${basePath}win.png`,
+    `${basePath}Flare.png`,
+  ];
+
+  const objectAssets = objectCatalog.flatMap((objectId) =>
+    [1, 2, 3].map((variant) => `${basePath}object/${objectId}/${variant}.png`),
+  );
+
+  return [...sharedAssets, ...objectAssets];
+};
+
+const BootLoader = ({ progress }: { progress: number }) => {
+  const normalizedProgress = Math.max(0, Math.min(100, Math.round(progress)));
+
+  return (
+    <div className="boot-loader-shell ritual-shell">
+      <div className="boot-loader-shell__backdrop" aria-hidden="true" />
+      <div className="boot-loader-shell__dust" aria-hidden="true">
+        {Array.from({ length: 9 }, (_, index) => (
+          <span key={`boot-dust-${index + 1}`} className={`boot-loader-shell__dust-particle boot-loader-shell__dust-particle--${index + 1}`} />
+        ))}
+      </div>
+      <div className="boot-loader-shell__flare" aria-hidden="true">
+        <span className="boot-loader-shell__flare-ring boot-loader-shell__flare-ring--1" />
+        <span className="boot-loader-shell__flare-ring boot-loader-shell__flare-ring--2" />
+        <span className="boot-loader-shell__flare-ring boot-loader-shell__flare-ring--3" />
+      </div>
+
+      <div className="boot-loader-card">
+        <div className="boot-loader-card__scarab" aria-hidden="true">
+          <span className="boot-loader-card__scarab-body" />
+          <span className="boot-loader-card__scarab-wing boot-loader-card__scarab-wing--left" />
+          <span className="boot-loader-card__scarab-wing boot-loader-card__scarab-wing--right" />
+        </div>
+
+        <p className="boot-loader-card__eyebrow">Храм пробуждается</p>
+        <h1 className="boot-loader-card__title">Пробуждаем саркофаг</h1>
+        <p className="boot-loader-card__copy">Собираем свитки, золото и сцены ритуала, чтобы игра открылась уже полностью готовой.</p>
+
+        <div className="boot-loader-card__track" aria-hidden="true">
+          <span className="boot-loader-card__track-fill" style={{ width: `${normalizedProgress}%` }} />
+          <span className="boot-loader-card__track-glow" />
+        </div>
+
+        <div className="boot-loader-card__footer">
+          <span className="boot-loader-card__footer-label">Готовим зал ритуала</span>
+          <span className="boot-loader-card__footer-value num-grobold">{normalizedProgress}%</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const GameScreen = () => {
   const {
     stage,
     secondsLeft,
@@ -55,11 +170,13 @@ const App = () => {
   } = useGameEngine();
 
   const [isTopUpOpen, setIsTopUpOpen] = useState<boolean>(false);
-  const [hintedSide, setHintedSide] = useState<BetSide | null>(null);
   const [currentObjectId, setCurrentObjectId] = useState<string>(() => objectCatalog[0] ?? fallbackObjectId);
+  const [showRoundTransitionFlash, setShowRoundTransitionFlash] = useState<boolean>(false);
 
   const previousBalanceRef = useRef<number | null>(null);
   const objectRoundRef = useRef<number | null>(null);
+  const previousStageRef = useRef<StageIndicator>(stage);
+  const currentObjectIdRef = useRef<string>(currentObjectId);
 
   useEffect(() => {
     const previousBalance = previousBalanceRef.current;
@@ -72,25 +189,6 @@ const App = () => {
   }, [balance]);
 
   useEffect(() => {
-    if (controlsDisabled || currentBet <= 0 || selectedSide !== null) {
-      setHintedSide(null);
-      return;
-    }
-
-    const firstSide = gameConfig.sides[0].id;
-    const secondSide = gameConfig.sides[1].id;
-    setHintedSide(firstSide);
-
-    const switchInterval = window.setInterval(() => {
-      setHintedSide((prevSide) => (prevSide === firstSide ? secondSide : firstSide));
-    }, 550);
-
-    return () => {
-      window.clearInterval(switchInterval);
-    };
-  }, [controlsDisabled, currentBet, selectedSide]);
-
-  useEffect(() => {
     if (stage !== 'betting') {
       return;
     }
@@ -99,60 +197,120 @@ const App = () => {
       return;
     }
 
+    currentObjectIdRef.current = pickRandomObjectId();
     objectRoundRef.current = roundId;
-    setCurrentObjectId(pickRandomObjectId());
+    setCurrentObjectId(currentObjectIdRef.current);
   }, [roundId, stage]);
 
+  useEffect(() => {
+    currentObjectIdRef.current = currentObjectId;
+  }, [currentObjectId]);
+
+  useEffect(() => {
+    let flashTimeout: number | null = null;
+    let cancelled = false;
+
+    if (previousStageRef.current === 'finished' && stage === 'betting') {
+      setShowRoundTransitionFlash(true);
+
+      let minFlashElapsed = false;
+      let scenePreloaded = false;
+
+      const finishFlashIfReady = () => {
+        if (cancelled || !minFlashElapsed || !scenePreloaded) {
+          return;
+        }
+
+        setShowRoundTransitionFlash(false);
+      };
+
+      const basePath = import.meta.env.BASE_URL;
+      const objectSrc = `${basePath}object/${currentObjectIdRef.current}/1.png`;
+      const sceneAssets = [
+        objectSrc,
+        `${basePath}man.png`,
+        `${basePath}yes.png`,
+        `${basePath}no.png`,
+      ];
+
+      void Promise.all(sceneAssets.map((src) => preloadImage(src))).then(() => {
+        scenePreloaded = true;
+        finishFlashIfReady();
+      });
+
+      flashTimeout = window.setTimeout(() => {
+        minFlashElapsed = true;
+        finishFlashIfReady();
+      }, 560);
+    } else if (stage !== 'betting') {
+      setShowRoundTransitionFlash(false);
+    }
+
+    previousStageRef.current = stage;
+
+    return () => {
+      cancelled = true;
+
+      if (flashTimeout !== null) {
+        window.clearTimeout(flashTimeout);
+      }
+    };
+  }, [stage]);
+
   const currentRoundEntry = useMemo(() => getCurrentRoundEntry(history, roundId), [history, roundId]);
+  const showRoundLossOverlay = stage === 'finished' && currentRoundEntry?.status === 'lose';
 
   return (
-    <div className="app-root w-full max-w-full overflow-hidden bg-[#100d09] text-[#f2e5c0]">
-      <div className="app-frame">
-        <div className="ritual-shell app-shell app-shell-grid overflow-hidden">
-          <header className="app-header min-w-0 space-y-1">
-            <HistoryPanel entries={history} sideLabels={loreSideLabels} />
-          </header>
+    <>
+      <div className="ritual-shell app-shell app-shell-grid overflow-hidden">
+        {showRoundLossOverlay ? (
+          <div className="app-round-loss-overlay" aria-hidden="true">
+            <span className="app-round-loss-overlay__veil" />
+            <span className="app-round-loss-overlay__glow" />
+            {Array.from({ length: 6 }, (_, index) => (
+              <span key={`screen-crack-${index + 1}`} className={`app-round-loss-overlay__crack app-round-loss-overlay__crack--${index + 1}`} />
+            ))}
+          </div>
+        ) : null}
+        {showRoundTransitionFlash ? <div className="app-round-transition-flash" aria-hidden="true" /> : null}
 
-          <RoundStatusPanel
-            stage={stage}
-            secondsLeft={secondsLeft}
-            balance={balance}
-            onBalanceClick={() => setIsTopUpOpen(true)}
-          />
+        <header className="app-header min-w-0 space-y-1">
+          <HistoryPanel entries={history} sideLabels={loreSideLabels} balance={balance} onBalanceClick={() => setIsTopUpOpen(true)} />
+        </header>
 
-          <main className="app-main min-h-0">
-            <div className="app-main-grid">
-              <AncientObjectStage
-                stage={stage}
-                objectId={currentObjectId}
-                currentRoundEntry={currentRoundEntry}
-                currentRoundResult={currentRoundEntry?.roundResult ?? (lastRoundReveal?.roundId === roundId ? lastRoundReveal.result : null)}
-                selectedSide={selectedSide}
-                hintedSide={hintedSide}
-                coefficients={gameConfig.coefficients}
-                disabled={controlsDisabled}
-                onSelect={selectSide}
-                currentBet={currentBet}
-              />
-            </div>
-          </main>
+        <RoundStatusPanel stage={stage} secondsLeft={secondsLeft} currentRoundEntry={currentRoundEntry} currentBet={currentBet} />
 
-          <footer className="app-footer">
-            <BetControls
-              chips={gameConfig.chips}
-              selectedChip={selectedChip}
-              currentBet={currentBet}
-              potentialPayout={selectedSide ? potentialPayout : 0}
-              showAddBetHint={currentBet === 0 && canAddBet}
+        <main className="app-main min-h-0">
+          <div className="app-main-grid">
+            <AncientObjectStage
+              stage={stage}
+              objectId={currentObjectId}
+              currentRoundEntry={currentRoundEntry}
+              currentRoundResult={currentRoundEntry?.roundResult ?? (lastRoundReveal?.roundId === roundId ? lastRoundReveal.result : null)}
+              selectedSide={selectedSide}
+              coefficients={gameConfig.coefficients}
               disabled={controlsDisabled}
-              canAddBet={canAddBet}
-              canResetBet={canResetBet}
-              onSelectChip={selectChip}
-              onAddBet={addBet}
-              onResetBet={resetBet}
+              onSelect={selectSide}
+              currentBet={currentBet}
             />
-          </footer>
-        </div>
+          </div>
+        </main>
+
+        <footer className="app-footer">
+          <BetControls
+            chips={gameConfig.chips}
+            selectedChip={selectedChip}
+            currentBet={currentBet}
+            potentialPayout={selectedSide ? potentialPayout : 0}
+            showAddBetHint={currentBet === 0 && canAddBet}
+            disabled={false}
+            canAddBet={canAddBet}
+            canResetBet={canResetBet}
+            onSelectChip={selectChip}
+            onAddBet={addBet}
+            onResetBet={resetBet}
+          />
+        </footer>
       </div>
 
       <BalanceTopUpModal
@@ -167,6 +325,80 @@ const App = () => {
           setIsTopUpOpen(false);
         }}
       />
+    </>
+  );
+};
+
+const App = () => {
+  const [isBootReady, setIsBootReady] = useState<boolean>(() => hasSeenBootLoader());
+  const [bootProgress, setBootProgress] = useState<number>(() => (hasSeenBootLoader() ? 100 : 0));
+
+  useEffect(() => {
+    if (isBootReady) {
+      return;
+    }
+
+    let cancelled = false;
+    let isSettled = false;
+    let completedTasks = 0;
+    const basePath = import.meta.env.BASE_URL;
+    const bootTasks = [
+      preloadFont('Lilita'),
+      preloadFont('GROBOLD'),
+      ...getBootAssetSources(basePath).map((src) => preloadImage(src)),
+    ];
+    const totalTasks = Math.max(bootTasks.length, 1);
+
+    const updateProgress = () => {
+      if (cancelled) {
+        return;
+      }
+
+      setBootProgress(Math.round((completedTasks / totalTasks) * 100));
+    };
+
+    const finalizeBoot = async () => {
+      if (cancelled || isSettled) {
+        return;
+      }
+
+      isSettled = true;
+      setBootProgress(100);
+      await waitForNextPaint();
+
+      if (cancelled) {
+        return;
+      }
+
+      markBootLoaderSeen();
+      setIsBootReady(true);
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      void finalizeBoot();
+    }, bootLoaderTimeoutMs);
+
+    void Promise.all(
+      bootTasks.map((task) =>
+        task.finally(() => {
+          completedTasks += 1;
+          updateProgress();
+        }),
+      ),
+    ).then(() => {
+      window.clearTimeout(timeoutId);
+      void finalizeBoot();
+    });
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [isBootReady]);
+
+  return (
+    <div className="app-root w-full max-w-full overflow-hidden bg-[#100d09] text-[#f2e5c0]">
+      <div className="app-frame">{isBootReady ? <GameScreen /> : <BootLoader progress={bootProgress} />}</div>
     </div>
   );
 };

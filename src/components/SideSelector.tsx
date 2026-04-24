@@ -5,7 +5,6 @@ import { BetSide, SideConfig } from '../types/game';
 interface SideSelectorProps {
   sides: readonly [SideConfig, SideConfig];
   selectedSide: BetSide | null;
-  hintedSide: BetSide | null;
   coefficients: Record<BetSide, number>;
   disabled: boolean;
   onSelect: (side: BetSide) => void;
@@ -21,12 +20,9 @@ const scrollLabelBySide: Record<BetSide, string> = {
   no: 'Тьма',
 };
 
-const handImageSrc = `${import.meta.env.BASE_URL}arm.png`;
-
 export const SideSelector = ({
   sides,
   selectedSide,
-  hintedSide,
   coefficients,
   disabled,
   onSelect,
@@ -59,7 +55,7 @@ export const SideSelector = ({
             >
               <div className="mb-1 flex items-center justify-between gap-1">
                 <p className="truncate text-[10px] font-bold uppercase tracking-[0.12em] text-[#e9d7ad]">{scrollLabelBySide[side.id]}</p>
-                <p className="side-card-coef rounded-full bg-[#2a1d10d8] px-1.5 py-0.5 text-[10px] font-extrabold text-[#f7e7be]">
+                <p className="side-card-coef num-grobold rounded-full bg-[#2a1d10d8] px-1.5 py-0.5 text-[10px] font-extrabold text-[#f7e7be]">
                   x{formatCoefficient(coefficients[side.id])}
                 </p>
               </div>
@@ -78,10 +74,6 @@ export const SideSelector = ({
                   </div>
                 )}
               </div>
-
-              {hintedSide === side.id ? (
-                <img src={handImageSrc} alt="" aria-hidden="true" className="hint-hand hint-hand--side" />
-              ) : null}
             </button>
           );
         })}

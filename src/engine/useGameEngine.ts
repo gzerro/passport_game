@@ -269,14 +269,10 @@ export const useGameEngine = (): UseGameEngineResult => {
   const potentialPayout = selectedSide ? Math.round(currentBet * gameConfig.coefficients[selectedSide]) : 0;
   const netProfit = potentialPayout - currentBet;
 
-  const canAddBet = !controlsDisabled && balance > 0 && currentBet < balance;
-  const canResetBet = !controlsDisabled && currentBet > 0;
+  const canAddBet = balance > 0 && currentBet < balance;
+  const canResetBet = currentBet > 0;
 
   const addBet = (): void => {
-    if (controlsDisabled) {
-      return;
-    }
-
     if (balanceRef.current <= 0 || currentBetRef.current >= balanceRef.current) {
       return;
     }
@@ -296,10 +292,6 @@ export const useGameEngine = (): UseGameEngineResult => {
   };
 
   const resetBet = (): void => {
-    if (controlsDisabled) {
-      return;
-    }
-
     setCurrentBet(0);
   };
 
@@ -312,10 +304,6 @@ export const useGameEngine = (): UseGameEngineResult => {
   };
 
   const selectChip = (chip: ChipValue): void => {
-    if (controlsDisabled) {
-      return;
-    }
-
     setSelectedChip(chip);
   };
 

@@ -5,64 +5,71 @@ import { BetSide, HistoryEntry } from '../types/game';
 interface HistoryPanelProps {
   entries: HistoryEntry[];
   sideLabels: Record<BetSide, string>;
+  balance: number;
+  onBalanceClick: () => void;
 }
 
-export const HistoryPanel = ({ entries, sideLabels }: HistoryPanelProps) => {
+const infoButtonSrc = `${import.meta.env.BASE_URL}info.png`;
+const coinImageSrc = `${import.meta.env.BASE_URL}coin.png`;
+
+export const HistoryPanel = ({ entries, sideLabels, balance, onBalanceClick }: HistoryPanelProps) => {
   const [modalEntry, setModalEntry] = useState<HistoryEntry | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
 
-  const previewEntries = useMemo(() => entries.slice(0, 8), [entries]);
+  const previewEntries = useMemo(() => entries.slice(0, 6), [entries]);
 
   return (
-    <div className="ritual-panel framed-panel history-panel min-w-0 rounded-[14px] p-1">
-      <div className="flex min-w-0 items-center gap-1">
+    <div className="top-history-strip min-w-0 rounded-[14px] p-[3px]">
+      <div className="history-strip-row flex min-w-0 items-center gap-1">
         <button
           type="button"
           aria-label="Открыть хронику"
           onClick={() => setIsHistoryOpen(true)}
-          className="history-menu-btn grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[#b8935f8a] bg-[#2a1e12f0] text-[#e8d8b0] transition active:scale-[0.98]"
+          className="history-strip__info-btn grid h-9 w-9 shrink-0 place-items-center rounded-[12px] border transition active:scale-[0.98]"
         >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2">
-            <path d="M4 7H20" />
-            <path d="M4 12H20" />
-            <path d="M4 17H20" />
-          </svg>
+          <img src={infoButtonSrc} alt="" aria-hidden="true" className="h-full w-full object-contain" />
         </button>
 
-        {previewEntries.length === 0 ? (
-          <div className="flex h-9 flex-1 items-center rounded-xl border border-[#b8935f52] bg-[#2d2012cc] px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#cfb98a]">
-            Хроника
-          </div>
-        ) : (
-          <div className="no-scrollbar min-w-0 flex-1 overflow-x-auto">
-            <ul className="flex min-w-max gap-1 pr-1">
-              {previewEntries.map((entry) => {
-                const sideLabel = sideLabels[entry.selectedSide];
+        <div className="no-scrollbar history-strip__entries min-w-0 flex-1 overflow-x-auto">
+          <ul className="flex min-w-max gap-1.5 pr-1">
+            {previewEntries.length === 0 ? (
+              <li>
+                <div className="history-pill history-pill--empty grid h-9 min-w-[92px] place-items-center rounded-[12px] border px-2">
+                  <span className="text-[0.94rem] leading-none text-[#d7c799]">Нет истории</span>
+                </div>
+              </li>
+            ) : (
+              previewEntries.map((entry) => {
                 const signedDelta = `${entry.balanceDelta >= 0 ? '+' : ''}${formatNumber(entry.balanceDelta)}`;
+                const toneClass = entry.balanceDelta >= 0 ? 'history-pill--positive' : 'history-pill--red';
 
                 return (
                   <li key={entry.id}>
                     <button
                       type="button"
                       onClick={() => setModalEntry(entry)}
-                      className="history-chip history-entry-btn min-w-[88px] rounded-xl border px-2 py-1 text-left"
+                      className={['history-pill history-entry-btn grid h-9 min-w-[96px] place-items-center rounded-[12px] border px-2 text-center transition', toneClass].join(' ')}
                     >
-                      <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#d8bf8a]">{sideLabel}</p>
-                      <p
-                        className={[
-                          'mt-0.5 text-[12px] font-extrabold leading-none',
-                          entry.balanceDelta >= 0 ? 'text-[#8de1a2]' : 'text-[#ff9c9c]',
-                        ].join(' ')}
-                      >
-                        {signedDelta}
-                      </p>
+                      <span className="history-pill__value num-grobold">{signedDelta}</span>
                     </button>
                   </li>
                 );
-              })}
-            </ul>
-          </div>
-        )}
+              })
+            )}
+          </ul>
+        </div>
+
+        <button
+          type="button"
+          onClick={onBalanceClick}
+          className="history-strip__balance flex h-9 shrink-0 items-center gap-1 rounded-[12px] border px-2.5 transition active:scale-[0.98]"
+          aria-label="Баланс"
+        >
+          <span className="history-strip__coin grid h-6 w-6 shrink-0 place-items-center rounded-full">
+            <img src={coinImageSrc} alt="" aria-hidden="true" className="history-strip__coin-img h-full w-full object-contain" />
+          </span>
+          <span className="history-strip__balance-value num-grobold">{formatNumber(balance)}</span>
+        </button>
       </div>
 
       {isHistoryOpen ? (
@@ -97,12 +104,12 @@ export const HistoryPanel = ({ entries, sideLabels }: HistoryPanelProps) => {
                       className="w-full rounded-xl border border-[#b7945e70] bg-[#2b1f13d8] px-3 py-2 text-left"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-semibold text-[#f0deb2]">#{entry.roundId}</span>
-                        <span className="text-[10px] text-[#c9b180]">{formatClockTime(entry.timestamp)}</span>
+                        <span className="num-grobold text-[11px] font-semibold text-[#f0deb2]">#{entry.roundId}</span>
+                        <span className="num-grobold text-[10px] text-[#c9b180]">{formatClockTime(entry.timestamp)}</span>
                       </div>
                       <div className="mt-1 flex items-center justify-between gap-2">
                         <span className="text-[11px] text-[#d7bf8f]">{sideLabels[entry.selectedSide]}</span>
-                        <span className={entry.balanceDelta >= 0 ? 'text-[#93e6a8]' : 'text-[#ffa7a7]'}>
+                        <span className={entry.balanceDelta >= 0 ? 'num-grobold text-[#93e6a8]' : 'num-grobold text-[#ffa7a7]'}>
                           {entry.balanceDelta >= 0 ? '+' : ''}
                           {formatNumber(entry.balanceDelta)}
                         </span>
@@ -126,7 +133,9 @@ export const HistoryPanel = ({ entries, sideLabels }: HistoryPanelProps) => {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="ritual-title text-sm text-[#f5e4b8]">Раунд #{modalEntry.roundId}</h3>
+              <h3 className="ritual-title text-sm text-[#f5e4b8]">
+                Раунд <span className="num-grobold">#{modalEntry.roundId}</span>
+              </h3>
               <button
                 type="button"
                 onClick={() => setModalEntry(null)}
@@ -138,17 +147,17 @@ export const HistoryPanel = ({ entries, sideLabels }: HistoryPanelProps) => {
 
             <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
               <span>Время</span>
-              <span className="text-right">{formatClockTime(modalEntry.timestamp)}</span>
+              <span className="num-grobold text-right">{formatClockTime(modalEntry.timestamp)}</span>
               <span>Свиток</span>
               <span className="text-right">{sideLabels[modalEntry.selectedSide]}</span>
               <span>Ставка</span>
-              <span className="text-right">{formatNumber(modalEntry.betAmount)}</span>
+              <span className="num-grobold text-right">{formatNumber(modalEntry.betAmount)}</span>
               <span>Коэф.</span>
-              <span className="text-right">x{formatCoefficient(modalEntry.coefficient)}</span>
+              <span className="num-grobold text-right">x{formatCoefficient(modalEntry.coefficient)}</span>
               <span>Итог</span>
               <span className="text-right">{sideLabels[modalEntry.roundResult]}</span>
               <span>Выплата</span>
-              <span className="text-right">{formatNumber(modalEntry.payout)}</span>
+              <span className="num-grobold text-right">{formatNumber(modalEntry.payout)}</span>
             </div>
           </div>
         </div>

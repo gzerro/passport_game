@@ -14,18 +14,18 @@ export const BetSummaryCard = ({ currentBet, potentialPayout, netProfit }: BetSu
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div className="rounded-2xl bg-slate-50 p-3">
           <p className="text-slate-500">Собрано</p>
-          <p className="text-xl font-bold text-slate-900">{formatNumber(currentBet)}</p>
+          <p className="num-grobold text-xl font-bold text-slate-900">{formatNumber(currentBet)}</p>
         </div>
 
         <div className="rounded-2xl bg-slate-50 p-3">
           <p className="text-slate-500">Можно получить</p>
-          <p className="text-xl font-bold text-slate-900">{formatNumber(potentialPayout)}</p>
+          <p className="num-grobold text-xl font-bold text-slate-900">{formatNumber(potentialPayout)}</p>
         </div>
       </div>
 
       <div className="mt-3 rounded-2xl bg-slate-50 p-3 text-sm">
         <p className="text-slate-500">Чистая прибыль</p>
-        <p className={netProfit >= 0 ? 'font-semibold text-emerald-600' : 'font-semibold text-rose-600'}>
+        <p className={netProfit >= 0 ? 'num-grobold font-semibold text-emerald-600' : 'num-grobold font-semibold text-rose-600'}>
           {netProfit >= 0 ? '+' : ''}
           {formatNumber(netProfit)}
         </p>
