@@ -11,8 +11,8 @@ export const gameConfig: GameConfig = {
   },
   phases: {
     bettingDurationSec: 20,
-    resolvingDurationSec: 8,
-    finishedIndicatorDurationMs: 5000,
+    resolvingDurationSec: 3,
+    finishedIndicatorDurationMs: 6000,
   },
   defaults: {
     startingBalance: 10_000,

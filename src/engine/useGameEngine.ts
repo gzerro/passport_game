@@ -78,6 +78,7 @@ export const useGameEngine = (): UseGameEngineResult => {
   const pendingParticipationRef = useRef<PendingParticipation | null>(null);
   const hiddenRoundResultRef = useRef<RoundResult | null>(null);
   const balanceRef = useRef<number>(balance);
+  const shouldResetBetOnNextRoundRef = useRef<boolean>(false);
 
   useEffect(() => {
     selectedSideRef.current = selectedSide;
@@ -137,6 +138,14 @@ export const useGameEngine = (): UseGameEngineResult => {
       if (cancelled) {
         return;
       }
+
+      // Move bet reset to the start of the next round so finished status stays on screen
+      // with the previous round state until betting phase actually begins.
+      if (shouldResetBetOnNextRoundRef.current) {
+        setCurrentBet(0);
+        shouldResetBetOnNextRoundRef.current = false;
+      }
+      setSelectedSide(null);
 
       setRoundId(activeRoundId);
       setPhase('betting');
@@ -225,12 +234,11 @@ export const useGameEngine = (): UseGameEngineResult => {
       hiddenRoundResultRef.current = null;
 
       if (participation) {
-        setCurrentBet(0);
-        setSelectedSide(null);
+        shouldResetBetOnNextRoundRef.current = true;
       } else {
         // If player skipped round (e.g. bet amount prepared but side not selected),
-        // keep the assembled bet for the next round and reset only side selection.
-        setSelectedSide(null);
+        // keep the assembled bet for the next round.
+        shouldResetBetOnNextRoundRef.current = false;
       }
 
       setPhase('finished');

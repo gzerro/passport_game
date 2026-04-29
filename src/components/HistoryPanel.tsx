@@ -19,22 +19,22 @@ export const HistoryPanel = ({ entries, sideLabels, balance, onBalanceClick }: H
   const previewEntries = useMemo(() => entries.slice(0, 6), [entries]);
 
   return (
-    <div className="top-history-strip min-w-0 rounded-[14px] p-[3px]">
-      <div className="history-strip-row flex min-w-0 items-center gap-1">
+    <div className="top-history-strip">
+      <div className="history-strip-row">
         <button
           type="button"
           aria-label="Открыть хронику"
           onClick={() => setIsHistoryOpen(true)}
-          className="history-strip__info-btn grid h-9 w-9 shrink-0 place-items-center rounded-[12px] border transition active:scale-[0.98]"
+          className="history-strip__info-btn transition active:scale-[0.98]"
         >
-          <img src={infoButtonSrc} alt="" aria-hidden="true" className="h-full w-full object-contain" />
+          <img src={infoButtonSrc} alt="" aria-hidden="true" className="history-strip__icon-image" />
         </button>
 
-        <div className="no-scrollbar history-strip__entries min-w-0 flex-1 overflow-x-auto">
-          <ul className="flex min-w-max gap-1.5 pr-1">
+        <div className="no-scrollbar history-strip__entries">
+          <ul className="history-strip__entries-list">
             {previewEntries.length === 0 ? (
               <li>
-                <div className="history-pill history-pill--empty grid h-9 min-w-[92px] place-items-center rounded-[12px] border px-2">
+                <div className="history-pill history-pill--empty">
                   <span className="text-[0.94rem] leading-none text-[#d7c799]">Нет истории</span>
                 </div>
               </li>
@@ -48,7 +48,7 @@ export const HistoryPanel = ({ entries, sideLabels, balance, onBalanceClick }: H
                     <button
                       type="button"
                       onClick={() => setModalEntry(entry)}
-                      className={['history-pill history-entry-btn grid h-9 min-w-[96px] place-items-center rounded-[12px] border px-2 text-center transition', toneClass].join(' ')}
+                      className={['history-pill history-entry-btn transition', toneClass].join(' ')}
                     >
                       <span className="history-pill__value num-grobold">{signedDelta}</span>
                     </button>
@@ -62,11 +62,11 @@ export const HistoryPanel = ({ entries, sideLabels, balance, onBalanceClick }: H
         <button
           type="button"
           onClick={onBalanceClick}
-          className="history-strip__balance flex h-9 shrink-0 items-center gap-1 rounded-[12px] border px-2.5 transition active:scale-[0.98]"
+          className="history-strip__balance transition active:scale-[0.98]"
           aria-label="Баланс"
         >
-          <span className="history-strip__coin grid h-6 w-6 shrink-0 place-items-center rounded-full">
-            <img src={coinImageSrc} alt="" aria-hidden="true" className="history-strip__coin-img h-full w-full object-contain" />
+          <span className="history-strip__coin">
+            <img src={coinImageSrc} alt="" aria-hidden="true" className="history-strip__coin-img" />
           </span>
           <span className="history-strip__balance-value num-grobold">{formatNumber(balance)}</span>
         </button>

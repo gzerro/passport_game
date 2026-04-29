@@ -95,7 +95,6 @@ const getBootAssetSources = (basePath: string): string[] => {
     `${basePath}no.png`,
     `${basePath}man.png`,
     `${basePath}win.png`,
-    `${basePath}Flare.png`,
   ];
 
   const objectAssets = objectCatalog.flatMap((objectId) =>
@@ -129,9 +128,9 @@ const BootLoader = ({ progress }: { progress: number }) => {
           <span className="boot-loader-card__scarab-wing boot-loader-card__scarab-wing--right" />
         </div>
 
-        <p className="boot-loader-card__eyebrow">Храм пробуждается</p>
-        <h1 className="boot-loader-card__title">Пробуждаем саркофаг</h1>
-        <p className="boot-loader-card__copy">Собираем свитки, золото и сцены ритуала, чтобы игра открылась уже полностью готовой.</p>
+        <p className="boot-loader-card__eyebrow">Паспортный стол</p>
+        <h1 className="boot-loader-card__title">Запускаем паспортный контроль</h1>
+        <p className="boot-loader-card__copy">Проверяем документы, базы и сцены раунда, чтобы игра открылась полностью готовой.</p>
 
         <div className="boot-loader-card__track" aria-hidden="true">
           <span className="boot-loader-card__track-fill" style={{ width: `${normalizedProgress}%` }} />
@@ -139,7 +138,7 @@ const BootLoader = ({ progress }: { progress: number }) => {
         </div>
 
         <div className="boot-loader-card__footer">
-          <span className="boot-loader-card__footer-label">Готовим зал ритуала</span>
+          <span className="boot-loader-card__footer-label">Готовим пункт контроля</span>
           <span className="boot-loader-card__footer-value num-grobold">{normalizedProgress}%</span>
         </div>
       </div>
@@ -258,6 +257,10 @@ const GameScreen = () => {
   }, [stage]);
 
   const currentRoundEntry = useMemo(() => getCurrentRoundEntry(history, roundId), [history, roundId]);
+  const visibleHistoryEntries = useMemo(
+    () => (stage === 'resolving' || stage === 'finished' ? history.filter((entry) => entry.roundId !== roundId) : history),
+    [history, roundId, stage],
+  );
   const showRoundLossOverlay = stage === 'finished' && currentRoundEntry?.status === 'lose';
 
   return (
@@ -275,7 +278,7 @@ const GameScreen = () => {
         {showRoundTransitionFlash ? <div className="app-round-transition-flash" aria-hidden="true" /> : null}
 
         <header className="app-header min-w-0 space-y-1">
-          <HistoryPanel entries={history} sideLabels={loreSideLabels} balance={balance} onBalanceClick={() => setIsTopUpOpen(true)} />
+          <HistoryPanel entries={visibleHistoryEntries} sideLabels={loreSideLabels} balance={balance} onBalanceClick={() => setIsTopUpOpen(true)} />
         </header>
 
         <RoundStatusPanel stage={stage} secondsLeft={secondsLeft} currentRoundEntry={currentRoundEntry} currentBet={currentBet} />
@@ -283,6 +286,7 @@ const GameScreen = () => {
         <main className="app-main min-h-0">
           <div className="app-main-grid">
             <AncientObjectStage
+              roundId={roundId}
               stage={stage}
               objectId={currentObjectId}
               currentRoundEntry={currentRoundEntry}
