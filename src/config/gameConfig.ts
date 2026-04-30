@@ -6,31 +6,31 @@ export const gameConfig: GameConfig = {
     { id: 'no', label: 'Нет' },
   ],
   coefficients: {
-    yes: 3.6,
-    no: 1.24,
+    yes: 2,
+    no: 2,
   },
   phases: {
     bettingDurationSec: 20,
     resolvingDurationSec: 3,
-    finishedIndicatorDurationMs: 6000,
+    finishedIndicatorDurationMs: 1000,
   },
   defaults: {
-    startingBalance: 10_000,
+    startingBalance: 1_000_000,
     defaultChip: 100,
   },
-  chips: [50, 100, 500, 1000, 5000, 20000, 100000, 'all_in'],
+  chips: [100, 500, 1000, 5000, 10000, 50000, 150000],
   history: {
     maxEntries: 20,
   },
   topUp: {
     minAmount: 100,
-    maxAmount: 500_000,
+    maxAmount: 1_000_000,
     step: 100,
-    defaultAmount: 10_000,
+    defaultAmount: 1_000_000,
   },
   storageKeys: {
-    balance: 'two-variant-game.balance',
-    history: 'two-variant-game.history',
-    chip: 'two-variant-game.selected-chip',
+    balance: 'passport-game.balance.v2',
+    history: 'passport-game.history.v2',
+    chip: 'passport-game.selected-chip.v2',
   },
 };

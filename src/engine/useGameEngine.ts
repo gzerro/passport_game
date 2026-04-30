@@ -139,8 +139,8 @@ export const useGameEngine = (): UseGameEngineResult => {
         return;
       }
 
-      // Move bet reset to the start of the next round so finished status stays on screen
-      // with the previous round state until betting phase actually begins.
+      // Move UI reset to the next round so finished status keeps the previous
+      // round state visible until the next betting window actually begins.
       if (shouldResetBetOnNextRoundRef.current) {
         setCurrentBet(0);
         shouldResetBetOnNextRoundRef.current = false;
@@ -233,13 +233,7 @@ export const useGameEngine = (): UseGameEngineResult => {
       pendingParticipationRef.current = null;
       hiddenRoundResultRef.current = null;
 
-      if (participation) {
-        shouldResetBetOnNextRoundRef.current = true;
-      } else {
-        // If player skipped round (e.g. bet amount prepared but side not selected),
-        // keep the assembled bet for the next round.
-        shouldResetBetOnNextRoundRef.current = false;
-      }
+      shouldResetBetOnNextRoundRef.current = true;
 
       setPhase('finished');
       setStage('finished');
@@ -272,11 +266,11 @@ export const useGameEngine = (): UseGameEngineResult => {
   const potentialPayout = selectedSide ? Math.round(currentBet * gameConfig.coefficients[selectedSide]) : 0;
   const netProfit = potentialPayout - currentBet;
 
-  const canAddBet = balance > 0 && currentBet < balance;
-  const canResetBet = currentBet > 0;
+  const canAddBet = !controlsDisabled && balance > 0 && currentBet < balance;
+  const canResetBet = !controlsDisabled && currentBet > 0;
 
   const addBet = (): void => {
-    if (balanceRef.current <= 0 || currentBetRef.current >= balanceRef.current) {
+    if (controlsDisabled || balanceRef.current <= 0 || currentBetRef.current >= balanceRef.current) {
       return;
     }
 
@@ -295,6 +289,10 @@ export const useGameEngine = (): UseGameEngineResult => {
   };
 
   const resetBet = (): void => {
+    if (controlsDisabled) {
+      return;
+    }
+
     setCurrentBet(0);
   };
 
@@ -307,6 +305,10 @@ export const useGameEngine = (): UseGameEngineResult => {
   };
 
   const selectChip = (chip: ChipValue): void => {
+    if (controlsDisabled) {
+      return;
+    }
+
     setSelectedChip(chip);
   };
 

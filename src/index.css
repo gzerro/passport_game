@@ -813,6 +813,97 @@ img {
   margin-bottom: 0.1rem;
 }
 
+.status-panel__timer--hidden {
+  visibility: hidden;
+}
+
+.onboarding-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem max(0.75rem, env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+
+.onboarding-card {
+  width: min(100%, 390px);
+  border-radius: 18px;
+  border: 1px solid rgba(222, 181, 102, 0.54);
+  padding: 0.9rem;
+  background:
+    radial-gradient(circle at 50% -18%, rgba(255, 234, 186, 0.18), transparent 54%),
+    linear-gradient(180deg, rgba(48, 35, 22, 0.98) 0%, rgba(27, 20, 13, 0.98) 100%);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.44),
+    inset 0 1px 0 rgba(255, 239, 203, 0.18);
+  color: #f3e3bb;
+  pointer-events: auto;
+}
+
+.onboarding-card__progress {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 0.58rem;
+}
+
+.onboarding-card__dot {
+  width: 1.2rem;
+  height: 0.22rem;
+  border-radius: 999px;
+  background: rgba(173, 139, 82, 0.42);
+}
+
+.onboarding-card__dot--active {
+  background: #f0ca72;
+  box-shadow: 0 0 12px rgba(240, 202, 114, 0.36);
+}
+
+.onboarding-card__title {
+  margin: 0;
+  font-size: 1.12rem;
+  line-height: 1.05;
+  color: #f8e7bb;
+}
+
+.onboarding-card__copy {
+  margin: 0.44rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.28;
+  color: #d6c294;
+}
+
+.onboarding-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.78rem;
+}
+
+.onboarding-card__skip,
+.onboarding-card__next {
+  min-height: 36px;
+  border-radius: 999px;
+  padding: 0.42rem 0.78rem;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.onboarding-card__skip {
+  border: 1px solid rgba(178, 145, 89, 0.44);
+  color: #d8c49a;
+  background: rgba(42, 31, 20, 0.9);
+}
+
+.onboarding-card__next {
+  border: 1px solid rgba(232, 191, 107, 0.82);
+  color: #321f09;
+  background: linear-gradient(180deg, #f0cc76 0%, #c9923f 100%);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.24);
+}
+
 .timer-capsule-wrap {
   position: absolute;
   left: 0;

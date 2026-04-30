@@ -6,13 +6,14 @@ interface HistoryPanelProps {
   entries: HistoryEntry[];
   sideLabels: Record<BetSide, string>;
   balance: number;
+  disabled: boolean;
   onBalanceClick: () => void;
 }
 
 const infoButtonSrc = `${import.meta.env.BASE_URL}info.png`;
 const coinImageSrc = `${import.meta.env.BASE_URL}coin.png`;
 
-export const HistoryPanel = ({ entries, sideLabels, balance, onBalanceClick }: HistoryPanelProps) => {
+export const HistoryPanel = ({ entries, sideLabels, balance, disabled, onBalanceClick }: HistoryPanelProps) => {
   const [modalEntry, setModalEntry] = useState<HistoryEntry | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
 
@@ -24,8 +25,9 @@ export const HistoryPanel = ({ entries, sideLabels, balance, onBalanceClick }: H
         <button
           type="button"
           aria-label="Открыть хронику"
+          disabled={disabled}
           onClick={() => setIsHistoryOpen(true)}
-          className="history-strip__info-btn transition active:scale-[0.98]"
+          className={['history-strip__info-btn transition', disabled ? 'cursor-not-allowed opacity-60' : 'active:scale-[0.98]'].join(' ')}
         >
           <img src={infoButtonSrc} alt="" aria-hidden="true" className="history-strip__icon-image" />
         </button>
@@ -47,8 +49,9 @@ export const HistoryPanel = ({ entries, sideLabels, balance, onBalanceClick }: H
                   <li key={entry.id}>
                     <button
                       type="button"
+                      disabled={disabled}
                       onClick={() => setModalEntry(entry)}
-                      className={['history-pill history-entry-btn transition', toneClass].join(' ')}
+                      className={['history-pill history-entry-btn transition', toneClass, disabled ? 'cursor-not-allowed opacity-70' : ''].join(' ')}
                     >
                       <span className="history-pill__value num-grobold">{signedDelta}</span>
                     </button>
@@ -61,8 +64,9 @@ export const HistoryPanel = ({ entries, sideLabels, balance, onBalanceClick }: H
 
         <button
           type="button"
+          disabled={disabled}
           onClick={onBalanceClick}
-          className="history-strip__balance transition active:scale-[0.98]"
+          className={['history-strip__balance transition', disabled ? 'cursor-not-allowed opacity-70' : 'active:scale-[0.98]'].join(' ')}
           aria-label="Баланс"
         >
           <span className="history-strip__coin">

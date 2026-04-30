@@ -3,19 +3,21 @@ import { AncientObjectStage } from './components/AncientObjectStage';
 import { BalanceTopUpModal } from './components/BalanceTopUpModal';
 import { BetControls } from './components/BetControls';
 import { HistoryPanel } from './components/HistoryPanel';
+import { OnboardingOverlay } from './components/OnboardingOverlay';
 import { RoundStatusPanel } from './components/RoundStatusPanel';
 import { objectCatalog } from './config/objectCatalog';
 import { gameConfig } from './config/gameConfig';
 import { useGameEngine } from './engine/useGameEngine';
+import { usePlatformIntegration } from './integration/usePlatformIntegration';
 import { BetSide, HistoryEntry, StageIndicator } from './types/game';
 
 const fallbackObjectId = 'sarcophagus';
-const bootLoaderStorageKey = 'the-sarcophagus.bootSeen.v1';
-const bootLoaderTimeoutMs = 4_000;
+const bootLoaderStorageKey = 'passport-game.bootSeen.v1';
+const bootLoaderTimeoutMs = 2_500;
 
 const loreSideLabels: Record<BetSide, string> = {
-  yes: 'Свет',
-  no: 'Тьма',
+  yes: 'Исход 1',
+  no: 'Исход 2',
 };
 
 const pickRandomObjectId = (): string => {
@@ -257,6 +259,15 @@ const GameScreen = () => {
   }, [stage]);
 
   const currentRoundEntry = useMemo(() => getCurrentRoundEntry(history, roundId), [history, roundId]);
+  usePlatformIntegration({
+    stage,
+    roundId,
+    selectedSide,
+    currentBet,
+    coefficients: gameConfig.coefficients,
+    currentRoundEntry,
+  });
+
   const visibleHistoryEntries = useMemo(
     () => (stage === 'resolving' || stage === 'finished' ? history.filter((entry) => entry.roundId !== roundId) : history),
     [history, roundId, stage],
@@ -278,7 +289,13 @@ const GameScreen = () => {
         {showRoundTransitionFlash ? <div className="app-round-transition-flash" aria-hidden="true" /> : null}
 
         <header className="app-header min-w-0 space-y-1">
-          <HistoryPanel entries={visibleHistoryEntries} sideLabels={loreSideLabels} balance={balance} onBalanceClick={() => setIsTopUpOpen(true)} />
+          <HistoryPanel
+            entries={visibleHistoryEntries}
+            sideLabels={loreSideLabels}
+            balance={balance}
+            disabled={controlsDisabled}
+            onBalanceClick={() => setIsTopUpOpen(true)}
+          />
         </header>
 
         <RoundStatusPanel stage={stage} secondsLeft={secondsLeft} currentRoundEntry={currentRoundEntry} currentBet={currentBet} />
@@ -307,7 +324,7 @@ const GameScreen = () => {
             currentBet={currentBet}
             potentialPayout={selectedSide ? potentialPayout : 0}
             showAddBetHint={currentBet === 0 && canAddBet}
-            disabled={false}
+            disabled={controlsDisabled}
             canAddBet={canAddBet}
             canResetBet={canResetBet}
             onSelectChip={selectChip}
@@ -329,6 +346,7 @@ const GameScreen = () => {
           setIsTopUpOpen(false);
         }}
       />
+      <OnboardingOverlay />
     </>
   );
 };
