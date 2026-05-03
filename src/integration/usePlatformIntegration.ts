@@ -19,12 +19,6 @@ interface UsePlatformIntegrationParams {
   currentRoundEntry: HistoryEntry | null;
 }
 
-interface PlatformIntegrationState {
-  launchParams: LaunchParams;
-  isIntegratedLaunch: boolean;
-  playerId: string | null;
-}
-
 const getUnixTimestamp = (): number => Math.floor(Date.now() / 1000);
 
 const buildBetPayload = ({
@@ -75,7 +69,7 @@ export const usePlatformIntegration = ({
   currentBet,
   coefficients,
   currentRoundEntry,
-}: UsePlatformIntegrationParams): PlatformIntegrationState => {
+}: UsePlatformIntegrationParams): void => {
   const launchParams = useMemo(() => readLaunchParams(), []);
   const client = useMemo(
     () => createProviderApiClient({ baseUrl: launchParams.providerApiBaseUrl }),
@@ -84,8 +78,6 @@ export const usePlatformIntegration = ({
   const [playerId, setPlayerId] = useState<string | null>(launchParams.playerId);
   const sentCreateRoundIdsRef = useRef<Set<number>>(new Set());
   const sentSettleRoundIdsRef = useRef<Set<number>>(new Set());
-
-  const isIntegratedLaunch = launchParams.sessionToken !== null;
 
   useEffect(() => {
     if (!launchParams.sessionToken) {
@@ -168,9 +160,4 @@ export const usePlatformIntegration = ({
     });
   }, [client, currentRoundEntry, launchParams, playerId, stage]);
 
-  return {
-    launchParams,
-    isIntegratedLaunch,
-    playerId,
-  };
 };

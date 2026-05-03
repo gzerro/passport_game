@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatCoefficient, formatNumber } from '../helpers/formatters';
+import { Language } from '../i18n';
 import { BetSide, HistoryEntry, StageIndicator } from '../types/game';
 
 interface AncientObjectStageProps {
@@ -13,6 +14,7 @@ interface AncientObjectStageProps {
   disabled: boolean;
   onSelect: (side: BetSide) => void;
   currentBet: number;
+  language: Language;
 }
 
 const sideImageById: Record<BetSide, string> = {
@@ -20,23 +22,73 @@ const sideImageById: Record<BetSide, string> = {
   no: `${import.meta.env.BASE_URL}no.png`,
 };
 
-const sideLabelById: Record<BetSide, string> = {
-  yes: 'Свет',
-  no: 'Тьма',
+const passportStampImageBySide: Record<BetSide, string> = {
+  yes: `${import.meta.env.BASE_URL}appruved.png`,
+  no: `${import.meta.env.BASE_URL}denied.png`,
 };
+
 const guideManImageSrc = `${import.meta.env.BASE_URL}man.png`;
-const winCoinsImageSrc = `${import.meta.env.BASE_URL}win.png`;
 const backImageSrc = `${import.meta.env.BASE_URL}back.png`;
+const tooltipImageSrc = `${import.meta.env.BASE_URL}tooltip.png`;
 
 const ritualCastWispSlots = Array.from({ length: 4 }, (_, index) => index + 1);
-const winFireworkBurstSlots = Array.from({ length: 4 }, (_, index) => index + 1);
-const guideManSpeechLines = [
-  'Нам нужны хорошие граждане!',
-  'Проверяй внимательно: страна ждет достойных людей.',
-  'Пропускай тех, кто принесет пользу государству.',
-  'Один выбор меняет будущее страны.',
-  'Смотри в паспорт и принимай справедливое решение.',
-] as const;
+const sideLabelByLanguage: Record<Language, Record<BetSide, string>> = {
+  ru: {
+    yes: 'Одобрить',
+    no: 'Отказать',
+  },
+  en: {
+    yes: 'Approve',
+    no: 'Deny',
+  },
+};
+
+const guideManSpeechVariantsByLanguage: Record<Language, readonly { title: string; copy: string }[]> = {
+  ru: [
+    {
+      title: 'Сделай выбор',
+      copy: 'Пропускай или отказывай. За правильный выбор получишь награду.',
+    },
+    {
+      title: 'Решай внимательно',
+      copy: 'Выбирай, кого пропустить, а кого развернуть. Верное решение приносит награду.',
+    },
+    {
+      title: 'Выбери исход',
+      copy: 'Одобряй или отказывай. Если угадаешь правильно, получишь выплату.',
+    },
+    {
+      title: 'Проверь человека',
+      copy: 'Реши, впускать его или нет. За точный выбор идет награда.',
+    },
+    {
+      title: 'Прими решение',
+      copy: 'Пропуск или отказ определяй по ситуации. Правильный исход дает награду.',
+    },
+  ],
+  en: [
+    {
+      title: 'Make a Choice',
+      copy: 'Approve or deny the person. A correct choice rewards you.',
+    },
+    {
+      title: 'Decide Carefully',
+      copy: 'Choose who gets through and who is turned away. A correct call pays out.',
+    },
+    {
+      title: 'Pick the Outcome',
+      copy: 'Approve or deny the entrant. Guess right and you get the reward.',
+    },
+    {
+      title: 'Check the Person',
+      copy: 'Decide whether to let them in or refuse entry. A precise choice brings a reward.',
+    },
+    {
+      title: 'Make the Call',
+      copy: 'Judge whether the person should pass or be denied. The right outcome pays.',
+    },
+  ],
+};
 
 const passportFirstNames = [
   'Costava',
@@ -80,7 +132,7 @@ const passportLastNames = [
   'Petrov',
 ] as const;
 
-const vesselFemalePassportNames = [
+const femalePassportNames = [
   'Alina Kovac',
   'Mira Ilieva',
   'Sofia Petrenko',
@@ -89,25 +141,39 @@ const vesselFemalePassportNames = [
   'Elena Todorova',
 ] as const;
 
-const passportCities = [
-  'Бангладеш',
-  'Тирана',
-  'Белград',
-  'Сараево',
-  'Скопье',
-  'Варшава',
-  'Бухарест',
-  'София',
-  'Ереван',
-  'Кутаиси',
-] as const;
+const femaleCharacterIds = new Set(['character-1', 'character-5']);
 
-const passportGenders = ['М', 'Ж'] as const;
+const passportCitiesByLanguage: Record<Language, readonly string[]> = {
+  ru: [
+    'Бангладеш',
+    'Тирана',
+    'Белград',
+    'Сараево',
+    'Скопье',
+    'Варшава',
+    'Бухарест',
+    'София',
+    'Ереван',
+    'Кутаиси',
+  ],
+  en: [
+    'Bangladesh',
+    'Tirana',
+    'Belgrade',
+    'Sarajevo',
+    'Skopje',
+    'Warsaw',
+    'Bucharest',
+    'Sofia',
+    'Yerevan',
+    'Kutaisi',
+  ],
+};
 
 interface PassportProfile {
   name: string;
   birthDate: string;
-  gender: (typeof passportGenders)[number];
+  gender: string;
   city: string;
   documentId: string;
 }
@@ -125,75 +191,216 @@ interface OutcomeReasonProfile {
   impactAmount: number;
 }
 
-const outcomePersonaNames = [
-  'Иван Кравцов',
-  'Марк Дьяконов',
-  'София Левина',
-  'Алан Миронов',
-  'Дамир Седов',
-  'Нина Орлова',
-  'Роман Бекетов',
-  'Яна Громова',
-  'Федор Славин',
-  'Лео Климов',
-  'Злата Егорова',
-  'Тимур Березин',
-  'Лада Соколова',
-  'Олег Данилов',
-  'Кира Мельник',
-] as const;
+const outcomePersonaNamesByLanguage: Record<Language, readonly string[]> = {
+  ru: [
+    'Иван Кравцов',
+    'Марк Дьяконов',
+    'София Левина',
+    'Алан Миронов',
+    'Дамир Седов',
+    'Нина Орлова',
+    'Роман Бекетов',
+    'Яна Громова',
+    'Федор Славин',
+    'Лео Климов',
+    'Злата Егорова',
+    'Тимур Березин',
+    'Лада Соколова',
+    'Олег Данилов',
+    'Кира Мельник',
+  ],
+  en: [
+    'Ivan Kravtsov',
+    'Mark Dyakonov',
+    'Sofia Levina',
+    'Alan Mironov',
+    'Damir Sedov',
+    'Nina Orlova',
+    'Roman Beketov',
+    'Yana Gromova',
+    'Fyodor Slavin',
+    'Leo Klimov',
+    'Zlata Yegorova',
+    'Timur Berezin',
+    'Lada Sokolova',
+    'Oleg Danilov',
+    'Kira Melnik',
+  ],
+};
 
-const positiveOutcomeProfessions = [
-  'ученый-биотехнолог',
-  'кардиохирург',
-  'инженер аэрокосмоса',
-  'основатель ИТ-стартапа',
-  'лауреат научной премии',
-  'спасатель МЧС',
-  'архитектор-градостроитель',
-  'разработчик вакцин',
-  'профессор кибербезопасности',
-  'предприниматель-инноватор',
-  'экологический исследователь',
-] as const;
+const positiveOutcomeProfessionsByLanguage: Record<Language, readonly string[]> = {
+  ru: [
+    'ученый-биотехнолог',
+    'кардиохирург',
+    'инженер аэрокосмоса',
+    'основатель ИТ-стартапа',
+    'лауреат научной премии',
+    'спасатель МЧС',
+    'архитектор-градостроитель',
+    'разработчик вакцин',
+    'профессор кибербезопасности',
+    'предприниматель-инноватор',
+    'экологический исследователь',
+  ],
+  en: [
+    'biotech scientist',
+    'cardiac surgeon',
+    'aerospace engineer',
+    'tech startup founder',
+    'science award laureate',
+    'rescue specialist',
+    'urban architect',
+    'vaccine developer',
+    'cybersecurity professor',
+    'innovative entrepreneur',
+    'environmental researcher',
+  ],
+};
 
-const negativeOutcomeProfessions = [
-  'финансовый мошенник',
-  'наркоторговец',
-  'организатор схем обнала',
-  'контрабандист',
-  'киберпреступник',
-  'черный брокер',
-  'фальшивомонетчик',
-  'торговец крадеными данными',
-  'коррупционный посредник',
-  'рейдер-вымогатель',
-  'организатор пирамиды',
-] as const;
+const negativeOutcomeProfessionsByLanguage: Record<Language, readonly string[]> = {
+  ru: [
+    'финансовый мошенник',
+    'наркоторговец',
+    'организатор схем обнала',
+    'контрабандист',
+    'киберпреступник',
+    'черный брокер',
+    'фальшивомонетчик',
+    'торговец крадеными данными',
+    'коррупционный посредник',
+    'рейдер-вымогатель',
+    'организатор пирамиды',
+  ],
+  en: [
+    'financial fraudster',
+    'drug trafficker',
+    'cashout scheme operator',
+    'smuggler',
+    'cybercriminal',
+    'black-market broker',
+    'counterfeiter',
+    'stolen data dealer',
+    'corrupt middleman',
+    'extortion racketeer',
+    'pyramid scheme organizer',
+  ],
+};
 
-const approveGoodReasons = [
-  'Хорошо: страна получила талантливого специалиста, это усилило экономику и рынок труда.',
-  'Отлично: вы пропустили ценного профессионала, который ускорил развитие технологий.',
-  'Плюс для государства: новый эксперт привлек инвестиции и запустил полезные проекты.',
-] as const;
+const approveGoodReasonsByLanguage: Record<Language, readonly string[]> = {
+  ru: [
+    'Хорошо: страна получила талантливого специалиста, это усилило экономику и рынок труда.',
+    'Отлично: вы пропустили ценного профессионала, который ускорил развитие технологий.',
+    'Плюс для государства: новый эксперт привлек инвестиции и запустил полезные проекты.',
+  ],
+  en: [
+    'Good: the country gained a talented specialist, strengthening the economy and labor market.',
+    'Excellent: you approved a valuable professional who accelerated technological progress.',
+    'A strong result: the new expert attracted investment and launched useful projects.',
+  ],
+};
 
-const approveBadReasons = [
-  'Плохо: вы пропустили преступника, из-за этого выросла преступность.',
-  'Ошибка: допуск опасного человека усилил криминальные схемы внутри страны.',
-  'Негативно: из-за неверного решения повысились риски для безопасности граждан.',
-] as const;
+const approveBadReasonsByLanguage: Record<Language, readonly string[]> = {
+  ru: [
+    'Плохо: вы пропустили преступника, из-за этого выросла преступность.',
+    'Ошибка: допуск опасного человека усилил криминальные схемы внутри страны.',
+    'Негативно: из-за неверного решения повысились риски для безопасности граждан.',
+  ],
+  en: [
+    'Bad: you allowed a criminal through, and crime increased because of it.',
+    'A mistake: letting in a dangerous person strengthened criminal schemes inside the country.',
+    'Negative outcome: the wrong call increased risks to public safety.',
+  ],
+};
 
-const rejectGoodReasons = [
-  'Плохо: вы не пустили талантливого человека, и его открытия ушли в другую страну.',
-  'Ошибка: отказ сильному специалисту замедлил развитие экономики и науки.',
-  'Негативно: государство потеряло эксперта, который мог создать новые рабочие места.',
-] as const;
+const rejectGoodReasonsByLanguage: Record<Language, readonly string[]> = {
+  ru: [
+    'Плохо: вы не пустили талантливого человека, и его открытия ушли в другую страну.',
+    'Ошибка: отказ сильному специалисту замедлил развитие экономики и науки.',
+    'Негативно: государство потеряло эксперта, который мог создать новые рабочие места.',
+  ],
+  en: [
+    'Bad: you turned away a talented person, and their breakthroughs went to another country.',
+    'A mistake: rejecting a strong specialist slowed economic and scientific growth.',
+    'Negative outcome: the country lost an expert who could have created new jobs.',
+  ],
+};
 
-const rejectBadReasons = [
-  'Отлично: вы не пустили преступника, государство защитило граждан.',
-  'Хорошо: опасный человек не прошел контроль, это снизило риск роста криминала.',
-  'Верное решение: въезд бандиту закрыт, общественная безопасность сохранена.',
-] as const;
+const rejectBadReasonsByLanguage: Record<Language, readonly string[]> = {
+  ru: [
+    'Отлично: вы не пустили преступника, государство защитило граждан.',
+    'Хорошо: опасный человек не прошел контроль, это снизило риск роста криминала.',
+    'Верное решение: въезд бандиту закрыт, общественная безопасность сохранена.',
+  ],
+  en: [
+    'Excellent: you stopped a criminal from entering, protecting the public.',
+    'Good: a dangerous person failed the check, reducing the risk of rising crime.',
+    'Correct decision: entry was denied to a bandit, and public safety was preserved.',
+  ],
+};
+
+const impactLabelsByLanguage: Record<
+  Language,
+  {
+    approveGood: string;
+    approveBad: string;
+    rejectGood: string;
+    rejectBad: string;
+  }
+> = {
+  ru: {
+    approveGood: 'Пассажир привлек в экономику',
+    approveBad: 'Пассажир не привлек, а нанес ущерб',
+    rejectGood: 'Пассажир не привлек в экономику',
+    rejectBad: 'Пассажир не привлек, ущерб предотвращен',
+  },
+  en: {
+    approveGood: 'Passenger contributed to the economy',
+    approveBad: 'Passenger caused damage instead of value',
+    rejectGood: 'Passenger brought no value to the economy',
+    rejectBad: 'Passenger was blocked and the damage was prevented',
+  },
+};
+
+const sceneLabelsByLanguage: Record<
+  Language,
+  {
+    person: string;
+    photo: string;
+    artifact: string;
+    checkedPerson: string;
+    revealedArtifact: string;
+    sealedArtifact: string;
+    approve: string;
+    deny: string;
+    decisionGroup: string;
+    passport: string;
+  }
+> = {
+  ru: {
+    person: 'Человек',
+    photo: 'Фото',
+    artifact: 'Артефакт',
+    checkedPerson: 'Проверяемый человек',
+    revealedArtifact: 'Раскрытый артефакт',
+    sealedArtifact: 'Запечатанный артефакт',
+    approve: 'Одобрить',
+    deny: 'Отказать',
+    decisionGroup: 'Решение по человеку',
+    passport: 'Паспорт',
+  },
+  en: {
+    person: 'Person',
+    photo: 'Photo',
+    artifact: 'Artifact',
+    checkedPerson: 'Checked person',
+    revealedArtifact: 'Revealed artifact',
+    sealedArtifact: 'Sealed artifact',
+    approve: 'Approve',
+    deny: 'Deny',
+    decisionGroup: 'Decision for the person',
+    passport: 'Passport',
+  },
+};
 
 const getSeededGenerator = (seed: number): (() => number) => {
   let state = (seed ^ 0x9e3779b9) >>> 0;
@@ -222,12 +429,13 @@ const getPassportNameByRound = (roundId: number): string => {
   return `${passportFirstNames[firstIndex]} ${passportLastNames[lastIndex]}`;
 };
 
-const buildPassportProfile = (roundId: number, objectId: string): PassportProfile => {
+const buildPassportProfile = (roundId: number, objectId: string, language: Language): PassportProfile => {
   const nextRandom = getSeededGenerator(roundId + 7919);
-  const isVesselObject = objectId === 'vessel';
-  const name = isVesselObject ? pickBySeed(vesselFemalePassportNames, nextRandom) : getPassportNameByRound(roundId);
+  const isFemaleCharacter = femaleCharacterIds.has(objectId);
+  const passportCities = passportCitiesByLanguage[language];
+  const name = isFemaleCharacter ? pickBySeed(femalePassportNames, nextRandom) : getPassportNameByRound(roundId);
   const city = pickBySeed(passportCities, nextRandom);
-  const gender: PassportProfile['gender'] = isVesselObject ? 'Ж' : 'М';
+  const gender = isFemaleCharacter ? (language === 'en' ? 'F' : 'Ж') : language === 'en' ? 'M' : 'М';
   const year = getRandomInt(1972, 2002, nextRandom);
   const month = getRandomInt(1, 12, nextRandom);
   const day = getRandomInt(1, getDaysInMonth(year, month), nextRandom);
@@ -242,7 +450,7 @@ const buildPassportProfile = (roundId: number, objectId: string): PassportProfil
   };
 };
 
-const buildOutcomePersonaProfile = (roundId: number, roundResult: BetSide | null): OutcomePersonaProfile | null => {
+const buildOutcomePersonaProfile = (roundId: number, roundResult: BetSide | null, language: Language): OutcomePersonaProfile | null => {
   if (roundResult === null) {
     return null;
   }
@@ -250,10 +458,10 @@ const buildOutcomePersonaProfile = (roundId: number, roundResult: BetSide | null
   const alignment: OutcomePersonaProfile['alignment'] = roundResult === 'yes' ? 'good' : 'bad';
   const seedOffset = alignment === 'good' ? 4261 : 9923;
   const nextRandom = getSeededGenerator(roundId + seedOffset);
-  const name = pickBySeed(outcomePersonaNames, nextRandom);
+  const name = pickBySeed(outcomePersonaNamesByLanguage[language], nextRandom);
   const profession = alignment === 'good'
-    ? pickBySeed(positiveOutcomeProfessions, nextRandom)
-    : pickBySeed(negativeOutcomeProfessions, nextRandom);
+    ? pickBySeed(positiveOutcomeProfessionsByLanguage[language], nextRandom)
+    : pickBySeed(negativeOutcomeProfessionsByLanguage[language], nextRandom);
 
   return {
     name,
@@ -262,12 +470,18 @@ const buildOutcomePersonaProfile = (roundId: number, roundResult: BetSide | null
   };
 };
 
-const buildOutcomeReasonProfile = (roundId: number, decisionSide: BetSide | null, roundResult: BetSide | null): OutcomeReasonProfile | null => {
+const buildOutcomeReasonProfile = (
+  roundId: number,
+  decisionSide: BetSide | null,
+  roundResult: BetSide | null,
+  language: Language,
+): OutcomeReasonProfile | null => {
   if (decisionSide === null || roundResult === null) {
     return null;
   }
 
   const nextRandom = getSeededGenerator(roundId + 15313);
+  const impactLabels = impactLabelsByLanguage[language];
   const approvedByPlayer = decisionSide === 'yes';
   const personIsGood = roundResult === 'yes';
 
@@ -275,8 +489,8 @@ const buildOutcomeReasonProfile = (roundId: number, decisionSide: BetSide | null
     const impactAmount = getRandomInt(120, 860, nextRandom) * 1_000;
     return {
       tone: 'good',
-      text: pickBySeed(approveGoodReasons, nextRandom),
-      impactLabel: 'Пассажир привлек в экономику',
+      text: pickBySeed(approveGoodReasonsByLanguage[language], nextRandom),
+      impactLabel: impactLabels.approveGood,
       impactAmount,
     };
   }
@@ -285,8 +499,8 @@ const buildOutcomeReasonProfile = (roundId: number, decisionSide: BetSide | null
     const impactAmount = -getRandomInt(80, 620, nextRandom) * 1_000;
     return {
       tone: 'bad',
-      text: pickBySeed(approveBadReasons, nextRandom),
-      impactLabel: 'Пассажир не привлек, а нанес ущерб',
+      text: pickBySeed(approveBadReasonsByLanguage[language], nextRandom),
+      impactLabel: impactLabels.approveBad,
       impactAmount,
     };
   }
@@ -295,8 +509,8 @@ const buildOutcomeReasonProfile = (roundId: number, decisionSide: BetSide | null
     const impactAmount = -getRandomInt(100, 700, nextRandom) * 1_000;
     return {
       tone: 'bad',
-      text: pickBySeed(rejectGoodReasons, nextRandom),
-      impactLabel: 'Пассажир не привлек в экономику',
+      text: pickBySeed(rejectGoodReasonsByLanguage[language], nextRandom),
+      impactLabel: impactLabels.rejectGood,
       impactAmount,
     };
   }
@@ -304,8 +518,8 @@ const buildOutcomeReasonProfile = (roundId: number, decisionSide: BetSide | null
   const impactAmount = getRandomInt(70, 540, nextRandom) * 1_000;
   return {
     tone: 'good',
-    text: pickBySeed(rejectBadReasons, nextRandom),
-    impactLabel: 'Пассажир не привлек, ущерб предотвращен',
+    text: pickBySeed(rejectBadReasonsByLanguage[language], nextRandom),
+    impactLabel: impactLabels.rejectBad,
     impactAmount,
   };
 };
@@ -321,13 +535,13 @@ export const AncientObjectStage = ({
   disabled,
   onSelect,
   currentBet,
+  language,
 }: AncientObjectStageProps) => {
   const [objectImageFailed, setObjectImageFailed] = useState<boolean>(false);
   const [sideImageFailed, setSideImageFailed] = useState<Record<BetSide, boolean>>({
     yes: false,
     no: false,
   });
-  const [animatedWinAmount, setAnimatedWinAmount] = useState<number>(0);
 
   const closedImageSrc = `${import.meta.env.BASE_URL}object/${objectId}/1.png`;
   const blessedImageSrc = `${import.meta.env.BASE_URL}object/${objectId}/2.png`;
@@ -345,80 +559,48 @@ export const AncientObjectStage = ({
 
   const hasPreparedBet = currentBet > 0;
   const isChoiceScene = stage === 'betting' || stage === 'resolving';
-  const showGuideMan = !hasPreparedBet;
-  const guideManSpeechLine = guideManSpeechLines[Math.max(0, (roundId - 1) % guideManSpeechLines.length)];
+  const isResultScene = stage === 'finished' && currentRoundEntry !== null;
+  const isPassportControlScene = isChoiceScene || isResultScene;
+  const showGuideMan = stage === 'betting' && !hasPreparedBet;
   const isChoiceSelectionDisabled = disabled || !hasPreparedBet;
+  const shouldPulseChoiceButtons = isChoiceScene && !isChoiceSelectionDisabled && selectedSide === null;
   const choiceWalkClass = stage === 'resolving' && selectedSide !== null ? `ancient-object__choice-person--walk-${selectedSide}` : '';
   const showRitualCast = stage === 'resolving' && selectedSide !== null;
-  const showWinCelebration = stage === 'finished' && currentRoundEntry?.status === 'win';
-  const winAmount = showWinCelebration ? Math.max(0, currentRoundEntry?.balanceDelta ?? 0) : 0;
-  const passportProfile = useMemo(() => buildPassportProfile(roundId, objectId), [objectId, roundId]);
+  const sceneLabels = sceneLabelsByLanguage[language];
+  const sideLabels = sideLabelByLanguage[language];
+  const guideManSpeechVariants = guideManSpeechVariantsByLanguage[language];
+  const guideManSpeech = useMemo(
+    () => pickBySeed(guideManSpeechVariants, getSeededGenerator(roundId + 2401)),
+    [guideManSpeechVariants, roundId],
+  );
+  const passportProfile = useMemo(() => buildPassportProfile(roundId, objectId, language), [language, objectId, roundId]);
+  const visiblePassportStampSide = isResultScene ? currentRoundEntry.selectedSide : selectedSide;
+  const resultBalanceDelta = currentRoundEntry?.balanceDelta ?? 0;
+  const resultAmountLabel = `${resultBalanceDelta >= 0 ? '+' : ''}${formatNumber(resultBalanceDelta, language)}`;
   const outcomePersonaProfile = useMemo(
-    () => buildOutcomePersonaProfile(roundId, currentRoundResult),
-    [currentRoundResult, roundId],
+    () => buildOutcomePersonaProfile(roundId, currentRoundResult, language),
+    [currentRoundResult, language, roundId],
   );
   const outcomeReasonProfile = useMemo(
-    () => buildOutcomeReasonProfile(roundId, currentRoundEntry?.selectedSide ?? null, currentRoundResult),
-    [currentRoundEntry?.selectedSide, currentRoundResult, roundId],
+    () => buildOutcomeReasonProfile(roundId, currentRoundEntry?.selectedSide ?? null, currentRoundResult, language),
+    [currentRoundEntry?.selectedSide, currentRoundResult, language, roundId],
   );
-
-  useEffect(() => {
-    if (!showWinCelebration || !currentRoundEntry) {
-      setAnimatedWinAmount(0);
-      return;
-    }
-
-    const prefersReducedMotion =
-      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (prefersReducedMotion) {
-      setAnimatedWinAmount(winAmount);
-      return;
-    }
-
-    let animationFrameId = 0;
-    let isCancelled = false;
-    const animationStart = performance.now();
-    const animationDurationMs = 2_000;
-
-    setAnimatedWinAmount(0);
-
-    const tick = (timestamp: number) => {
-      if (isCancelled) {
-        return;
-      }
-
-      const elapsed = Math.min(timestamp - animationStart, animationDurationMs);
-      const progress = Math.max(0, Math.min(1, elapsed / animationDurationMs));
-      const easedProgress = 1 - Math.pow(1 - progress, 3);
-      setAnimatedWinAmount(Math.round(winAmount * easedProgress));
-
-      if (progress < 1) {
-        animationFrameId = window.requestAnimationFrame(tick);
-      }
-    };
-
-    animationFrameId = window.requestAnimationFrame(tick);
-
-    return () => {
-      isCancelled = true;
-      window.cancelAnimationFrame(animationFrameId);
-    };
-  }, [currentRoundEntry?.id, showWinCelebration, winAmount]);
+  const resultTone = outcomeReasonProfile?.tone ?? (resultBalanceDelta >= 0 ? 'good' : 'bad');
 
   return (
     <section className="ritual-panel arena-panel temple-stage flex h-full min-h-0 min-w-0 flex-col rounded-[16px] p-1.5">
       <div
         className={[
           'ancient-object min-h-0 flex-1',
-          isChoiceScene ? 'ancient-object--choice' : '',
+          isPassportControlScene ? 'ancient-object--choice' : '',
+          isResultScene ? 'ancient-object--result' : '',
           stage === 'resolving' ? 'ancient-object--ritual' : '',
           stage === 'finished' ? 'ancient-object--revealed' : 'ancient-object--idle',
         ].join(' ')}
       >
         <div className="ancient-object__grain" aria-hidden="true" />
 
-        {isChoiceScene ? (
+        {isPassportControlScene ? (
           <div className="ancient-object__choice-layout">
             <div className="ancient-object__choice-visual">
               <div className="ancient-object__choice-stack">
@@ -426,55 +608,77 @@ export const AncientObjectStage = ({
                 {!objectImageFailed ? (
                   <img
                     src={imageSrc}
-                    alt="Проверяемый человек"
+                    alt={sceneLabels.checkedPerson}
                     className={['ancient-object__choice-person', choiceWalkClass].join(' ')}
                     onError={() => setObjectImageFailed(true)}
                   />
                 ) : (
-                  <div className="ancient-object__fallback ancient-object__choice-fallback">Человек</div>
+                  <div className="ancient-object__fallback ancient-object__choice-fallback">{sceneLabels.person}</div>
                 )}
+                {isResultScene ? (
+                  <p className={['ancient-object__result-amount num-grobold', `ancient-object__result-amount--${resultTone}`].join(' ')}>
+                    {resultAmountLabel}
+                  </p>
+                ) : null}
               </div>
               <div className="ancient-object__choice-glass" aria-hidden="true" />
             </div>
 
             <div className="ancient-object__choice-controls">
-              <div className="ancient-object__choice-buttons" role="group" aria-label="Решение по человеку">
-                {(['yes', 'no'] as const).map((sideId) => (
-                  <div key={sideId} className="ancient-object__choice-option">
-                    <button
-                      type="button"
-                      disabled={isChoiceSelectionDisabled}
-                      onClick={() => onSelect(sideId)}
-                      aria-label={sideId === 'yes' ? 'Одобрить' : 'Отказать'}
-                      className={[
-                        'ancient-object__choice-btn',
-                        selectedSide === sideId ? 'ancient-object__choice-btn--selected' : '',
-                        isChoiceSelectionDisabled ? 'ancient-object__choice-btn--inactive cursor-not-allowed' : 'active:scale-[0.98]',
-                      ].join(' ')}
-                    >
-                      {!sideImageFailed[sideId] ? (
-                        <img
-                          src={sideImageById[sideId]}
-                          alt={sideId === 'yes' ? 'Одобрить' : 'Отказать'}
-                          className="ancient-object__choice-btn-image"
-                          onError={() => setSideImageFailed((prev) => ({ ...prev, [sideId]: true }))}
-                        />
-                      ) : (
-                        <span className="ancient-object__choice-btn-fallback">{sideId === 'yes' ? 'ОДОБРИТЬ' : 'ОТКАЗАТЬ'}</span>
-                      )}
-                    </button>
-                    <p className="ancient-object__choice-coefs num-grobold">x{formatCoefficient(coefficients[sideId])}</p>
+              {isChoiceScene ? (
+                <div
+                  className={['ancient-object__choice-buttons', shouldPulseChoiceButtons ? 'ancient-object__choice-buttons--attention' : ''].join(' ')}
+                  role="group"
+                  aria-label={sceneLabels.decisionGroup}
+                >
+                  {(['yes', 'no'] as const).map((sideId) => (
+                    <div key={sideId} className="ancient-object__choice-option">
+                      <button
+                        type="button"
+                        disabled={isChoiceSelectionDisabled}
+                        onClick={() => onSelect(sideId)}
+                        aria-label={sideId === 'yes' ? sceneLabels.approve : sceneLabels.deny}
+                        className={[
+                          'ancient-object__choice-btn',
+                          selectedSide === sideId ? 'ancient-object__choice-btn--selected' : '',
+                          isChoiceSelectionDisabled ? 'ancient-object__choice-btn--inactive cursor-not-allowed' : 'active:scale-[0.98]',
+                        ].join(' ')}
+                      >
+                        {!sideImageFailed[sideId] ? (
+                          <img
+                            src={sideImageById[sideId]}
+                            alt={sideId === 'yes' ? sceneLabels.approve : sceneLabels.deny}
+                            className="ancient-object__choice-btn-image"
+                            onError={() => setSideImageFailed((prev) => ({ ...prev, [sideId]: true }))}
+                          />
+                        ) : (
+                          <span className="ancient-object__choice-btn-fallback">{sideId === 'yes' ? sceneLabels.approve.toUpperCase() : sceneLabels.deny.toUpperCase()}</span>
+                        )}
+                      </button>
+                      <p className="ancient-object__choice-coefs num-grobold">x{formatCoefficient(coefficients[sideId], language)}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : outcomeReasonProfile ? (
+                <div className={['ancient-object__result-panel', `ancient-object__result-panel--${resultTone}`].join(' ')}>
+                  <p className="ancient-object__result-panel-text">{outcomeReasonProfile.text}</p>
+                  <div className="ancient-object__result-panel-impact">
+                    <span className="ancient-object__result-panel-impact-label">{outcomeReasonProfile.impactLabel}</span>
+                    <span className={['ancient-object__result-panel-impact-value num-grobold', `ancient-object__result-panel-impact-value--${resultTone}`].join(' ')}>
+                      {outcomeReasonProfile.impactAmount >= 0 ? '+' : ''}
+                      {formatNumber(outcomeReasonProfile.impactAmount, language)}
+                    </span>
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : null}
             </div>
 
-            <article className="ancient-object__passport" aria-label="Паспорт">
+            <article className="ancient-object__passport" aria-label={sceneLabels.passport}>
               <div className="ancient-object__passport-photo">
                 {!objectImageFailed ? (
                   <img src={imageSrc} alt="" aria-hidden="true" className="ancient-object__passport-photo-image" />
                 ) : (
-                  <div className="ancient-object__passport-photo-fallback">Фото</div>
+                  <div className="ancient-object__passport-photo-fallback">{sceneLabels.photo}</div>
                 )}
               </div>
 
@@ -487,19 +691,16 @@ export const AncientObjectStage = ({
 
               <p className="ancient-object__passport-id num-grobold">{passportProfile.documentId}</p>
 
-              {selectedSide !== null ? (
-                <div className={['ancient-object__passport-stamp', `ancient-object__passport-stamp--${selectedSide}`].join(' ')} aria-hidden="true">
-                  <span className="ancient-object__passport-stamp-ring" />
-                  <span className="ancient-object__passport-stamp-band num-grobold">
-                    {selectedSide === 'yes' ? 'APPROVED' : 'DENIED'}
-                  </span>
+              {visiblePassportStampSide !== null ? (
+                <div className={['ancient-object__passport-stamp', `ancient-object__passport-stamp--${visiblePassportStampSide}`].join(' ')} aria-hidden="true">
+                  <img src={passportStampImageBySide[visiblePassportStampSide]} alt="" className="ancient-object__passport-stamp-image" />
                 </div>
               ) : null}
             </article>
           </div>
         ) : null}
 
-        {!isChoiceScene ? (
+        {!isPassportControlScene ? (
           <>
             {isFinished && outcomePersonaProfile ? (
               <p
@@ -515,12 +716,12 @@ export const AncientObjectStage = ({
             {!objectImageFailed ? (
               <img
                 src={imageSrc}
-                alt={isFinished ? 'Раскрытый артефакт' : 'Запечатанный артефакт'}
+                alt={isFinished ? sceneLabels.revealedArtifact : sceneLabels.sealedArtifact}
                 className="ancient-object__image"
                 onError={() => setObjectImageFailed(true)}
               />
             ) : (
-              <div className="ancient-object__fallback">Артефакт</div>
+              <div className="ancient-object__fallback">{sceneLabels.artifact}</div>
             )}
 
             {isFinished && outcomeReasonProfile ? (
@@ -535,7 +736,7 @@ export const AncientObjectStage = ({
                     ].join(' ')}
                   >
                     {outcomeReasonProfile.impactAmount >= 0 ? '+' : ''}
-                    {formatNumber(outcomeReasonProfile.impactAmount)}
+                    {formatNumber(outcomeReasonProfile.impactAmount, language)}
                   </span>
                 </div>
               </div>
@@ -554,27 +755,13 @@ export const AncientObjectStage = ({
                 {!sideImageFailed[selectedSide] ? (
                   <img
                     src={sideImageById[selectedSide]}
-                    alt={sideLabelById[selectedSide]}
+                    alt={sideLabels[selectedSide]}
                     className="ancient-object__ritual-scroll-image"
                     onError={() => setSideImageFailed((prev) => ({ ...prev, [selectedSide]: true }))}
                   />
                 ) : (
-                  <div className="ancient-object__ritual-scroll-fallback">{sideLabelById[selectedSide]}</div>
+                  <div className="ancient-object__ritual-scroll-fallback">{sideLabels[selectedSide]}</div>
                 )}
-              </div>
-            ) : null}
-            {showWinCelebration ? (
-              <div className="ancient-object__win-celebration" aria-hidden="true">
-                <span className="ancient-object__win-glow" />
-                <span className="ancient-object__win-backlight" />
-                {winFireworkBurstSlots.map((slot) => (
-                  <span key={`win-burst-${slot}`} className={`ancient-object__win-burst ancient-object__win-burst--${slot}`} />
-                ))}
-                <div className="ancient-object__win-counter">
-                  <span className="ancient-object__win-counter-label">Награда</span>
-                  <span className="ancient-object__win-counter-value num-grobold">+{formatNumber(animatedWinAmount)}</span>
-                </div>
-                <img src={winCoinsImageSrc} alt="" className="ancient-object__win-coins" />
               </div>
             ) : null}
           </>
@@ -584,8 +771,12 @@ export const AncientObjectStage = ({
       {showGuideMan ? (
         <>
           <div className="ancient-object__guide-backdrop" aria-hidden="true" />
-          <div className="ancient-object__guide-man-speech num-grobold" aria-hidden="true">
-            {guideManSpeechLine}
+          <div className="ancient-object__guide-man-speech" aria-hidden="true">
+            <img src={tooltipImageSrc} alt="" className="ancient-object__guide-man-speech-bg" />
+            <div className="ancient-object__guide-man-speech-content">
+              <p className="ancient-object__guide-man-speech-title">{guideManSpeech.title}</p>
+              <p className="ancient-object__guide-man-speech-copy">{guideManSpeech.copy}</p>
+            </div>
           </div>
           <img src={guideManImageSrc} alt="" aria-hidden="true" className="ancient-object__guide-man" />
         </>

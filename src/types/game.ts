@@ -1,5 +1,3 @@
-export type GamePhase = 'betting' | 'resolving' | 'finished';
-
 export type StageIndicator = 'betting' | 'resolving' | 'finished';
 
 export type BetSide = 'yes' | 'no';

@@ -1,16 +1,33 @@
-const numberFormatter = new Intl.NumberFormat('ru-RU');
+import { Language } from '../i18n';
 
-const timeFormatter = new Intl.DateTimeFormat('ru-RU', {
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-});
+const numberFormatters: Record<Language, Intl.NumberFormat> = {
+  ru: new Intl.NumberFormat('ru-RU'),
+  en: new Intl.NumberFormat('en-US'),
+};
 
-export const formatNumber = (value: number): string => numberFormatter.format(value);
+const timeFormatters: Record<Language, Intl.DateTimeFormat> = {
+  ru: new Intl.DateTimeFormat('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }),
+  en: new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }),
+};
 
-export const formatCoefficient = (value: number): string => value.toFixed(2).replace(/\.00$/, '');
+export const formatNumber = (value: number, language: Language = 'ru'): string => numberFormatters[language].format(value);
 
-export const formatClockTime = (timestamp: number): string => timeFormatter.format(new Date(timestamp));
+export const formatCoefficient = (value: number, language: Language = 'ru'): string => {
+  const normalizedValue = value.toFixed(2).replace(/\.00$/, '');
+  return language === 'ru' ? normalizedValue.replace('.', ',') : normalizedValue;
+};
+
+export const formatClockTime = (timestamp: number, language: Language = 'ru'): string =>
+  timeFormatters[language].format(new Date(timestamp));
 
 export const formatCountdown = (seconds: number): string => {
   const safeSeconds = Math.max(0, seconds);

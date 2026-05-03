@@ -9,16 +9,12 @@ import { objectCatalog } from './config/objectCatalog';
 import { gameConfig } from './config/gameConfig';
 import { useGameEngine } from './engine/useGameEngine';
 import { usePlatformIntegration } from './integration/usePlatformIntegration';
+import { Language, readLanguage, writeLanguage } from './i18n';
 import { BetSide, HistoryEntry, StageIndicator } from './types/game';
 
-const fallbackObjectId = 'sarcophagus';
+const fallbackObjectId = 'character-1';
 const bootLoaderStorageKey = 'passport-game.bootSeen.v1';
 const bootLoaderTimeoutMs = 2_500;
-
-const loreSideLabels: Record<BetSide, string> = {
-  yes: 'Исход 1',
-  no: 'Исход 2',
-};
 
 const pickRandomObjectId = (): string => {
   if (objectCatalog.length === 0) {
@@ -89,14 +85,15 @@ const markBootLoaderSeen = (): void => {
 const getBootAssetSources = (basePath: string): string[] => {
   const sharedAssets = [
     `${basePath}${encodeURI('фон.png')}`,
-    `${basePath}${encodeURI('подложка под таймер.png')}`,
-    `${basePath}info.png`,
+    `${basePath}info.svg`,
     `${basePath}coin.png`,
+    `${basePath}tooltip.png`,
     `${basePath}${encodeURI('поставить .png')}`,
     `${basePath}yes.png`,
     `${basePath}no.png`,
+    `${basePath}appruved.png`,
+    `${basePath}denied.png`,
     `${basePath}man.png`,
-    `${basePath}win.png`,
   ];
 
   const objectAssets = objectCatalog.flatMap((objectId) =>
@@ -124,31 +121,32 @@ const BootLoader = ({ progress }: { progress: number }) => {
       </div>
 
       <div className="boot-loader-card">
-        <div className="boot-loader-card__scarab" aria-hidden="true">
-          <span className="boot-loader-card__scarab-body" />
-          <span className="boot-loader-card__scarab-wing boot-loader-card__scarab-wing--left" />
-          <span className="boot-loader-card__scarab-wing boot-loader-card__scarab-wing--right" />
-        </div>
+        <h1 className="boot-loader-card__title">Passport Control</h1>
 
-        <p className="boot-loader-card__eyebrow">Паспортный стол</p>
-        <h1 className="boot-loader-card__title">Запускаем паспортный контроль</h1>
-        <p className="boot-loader-card__copy">Проверяем документы, базы и сцены раунда, чтобы игра открылась полностью готовой.</p>
-
-        <div className="boot-loader-card__track" aria-hidden="true">
-          <span className="boot-loader-card__track-fill" style={{ width: `${normalizedProgress}%` }} />
-          <span className="boot-loader-card__track-glow" />
-        </div>
-
-        <div className="boot-loader-card__footer">
-          <span className="boot-loader-card__footer-label">Готовим пункт контроля</span>
-          <span className="boot-loader-card__footer-value num-grobold">{normalizedProgress}%</span>
+        <div className="boot-loader-card__loader" aria-hidden="true">
+          <div className="boot-loader-card__track">
+            <span className="boot-loader-card__track-fill" style={{ width: `${normalizedProgress}%` }} />
+            <span className="boot-loader-card__track-glow" />
+          </div>
+          <span className="boot-loader-card__pulse" />
         </div>
       </div>
     </div>
   );
 };
 
-const GameScreen = () => {
+const sideLabelsByLanguage: Record<Language, Record<BetSide, string>> = {
+  ru: {
+    yes: 'Исход 1',
+    no: 'Исход 2',
+  },
+  en: {
+    yes: 'Outcome 1',
+    no: 'Outcome 2',
+  },
+};
+
+const GameScreen = ({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) => {
   const {
     stage,
     secondsLeft,
@@ -272,33 +270,32 @@ const GameScreen = () => {
     () => (stage === 'resolving' || stage === 'finished' ? history.filter((entry) => entry.roundId !== roundId) : history),
     [history, roundId, stage],
   );
-  const showRoundLossOverlay = stage === 'finished' && currentRoundEntry?.status === 'lose';
+  const sideLabels = sideLabelsByLanguage[language];
 
   return (
     <>
       <div className="ritual-shell app-shell app-shell-grid overflow-hidden">
-        {showRoundLossOverlay ? (
-          <div className="app-round-loss-overlay" aria-hidden="true">
-            <span className="app-round-loss-overlay__veil" />
-            <span className="app-round-loss-overlay__glow" />
-            {Array.from({ length: 6 }, (_, index) => (
-              <span key={`screen-crack-${index + 1}`} className={`app-round-loss-overlay__crack app-round-loss-overlay__crack--${index + 1}`} />
-            ))}
-          </div>
-        ) : null}
         {showRoundTransitionFlash ? <div className="app-round-transition-flash" aria-hidden="true" /> : null}
 
         <header className="app-header min-w-0 space-y-1">
           <HistoryPanel
             entries={visibleHistoryEntries}
-            sideLabels={loreSideLabels}
+            sideLabels={sideLabels}
             balance={balance}
             disabled={controlsDisabled}
+            language={language}
+            onLanguageChange={onLanguageChange}
             onBalanceClick={() => setIsTopUpOpen(true)}
           />
         </header>
 
-        <RoundStatusPanel stage={stage} secondsLeft={secondsLeft} currentRoundEntry={currentRoundEntry} currentBet={currentBet} />
+        <RoundStatusPanel
+          stage={stage}
+          secondsLeft={secondsLeft}
+          currentRoundEntry={currentRoundEntry}
+          currentBet={currentBet}
+          language={language}
+        />
 
         <main className="app-main min-h-0">
           <div className="app-main-grid">
@@ -313,6 +310,7 @@ const GameScreen = () => {
               disabled={controlsDisabled}
               onSelect={selectSide}
               currentBet={currentBet}
+              language={language}
             />
           </div>
         </main>
@@ -330,6 +328,7 @@ const GameScreen = () => {
             onSelectChip={selectChip}
             onAddBet={addBet}
             onResetBet={resetBet}
+            language={language}
           />
         </footer>
       </div>
@@ -345,8 +344,9 @@ const GameScreen = () => {
           topUpBalance(amount);
           setIsTopUpOpen(false);
         }}
+        language={language}
       />
-      <OnboardingOverlay />
+      <OnboardingOverlay language={language} />
     </>
   );
 };
@@ -354,6 +354,12 @@ const GameScreen = () => {
 const App = () => {
   const [isBootReady, setIsBootReady] = useState<boolean>(() => hasSeenBootLoader());
   const [bootProgress, setBootProgress] = useState<number>(() => (hasSeenBootLoader() ? 100 : 0));
+  const [language, setLanguage] = useState<Language>(() => readLanguage());
+
+  const handleLanguageChange = (nextLanguage: Language): void => {
+    setLanguage(nextLanguage);
+    writeLanguage(nextLanguage);
+  };
 
   useEffect(() => {
     if (isBootReady) {
@@ -420,7 +426,7 @@ const App = () => {
 
   return (
     <div className="app-root w-full max-w-full overflow-hidden bg-[#100d09] text-[#f2e5c0]">
-      <div className="app-frame">{isBootReady ? <GameScreen /> : <BootLoader progress={bootProgress} />}</div>
+      <div className="app-frame">{isBootReady ? <GameScreen language={language} onLanguageChange={handleLanguageChange} /> : <BootLoader progress={bootProgress} />}</div>
     </div>
   );
 };

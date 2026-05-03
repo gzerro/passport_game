@@ -6,7 +6,6 @@ import { loadHistory, saveHistory } from '../storage/historyStorage';
 import {
   BetSide,
   ChipValue,
-  GamePhase,
   HistoryEntry,
   RoundResult,
   StageIndicator,
@@ -26,7 +25,6 @@ interface LastRoundReveal {
 }
 
 export interface UseGameEngineResult {
-  phase: GamePhase;
   stage: StageIndicator;
   secondsLeft: number;
   roundId: number;
@@ -36,7 +34,6 @@ export interface UseGameEngineResult {
   currentBet: number;
   selectedChip: ChipValue;
   potentialPayout: number;
-  netProfit: number;
   controlsDisabled: boolean;
   canAddBet: boolean;
   canResetBet: boolean;
@@ -59,7 +56,6 @@ export const useGameEngine = (): UseGameEngineResult => {
   const storedHistory = useMemo(() => loadHistory(), []);
   const storedChip = useMemo(() => loadSelectedChip(), []);
 
-  const [phase, setPhase] = useState<GamePhase>('betting');
   const [stage, setStage] = useState<StageIndicator>('betting');
   const [secondsLeft, setSecondsLeft] = useState<number>(gameConfig.phases.bettingDurationSec);
   const [roundId, setRoundId] = useState<number>(() => getNextRoundId(storedHistory));
@@ -148,7 +144,6 @@ export const useGameEngine = (): UseGameEngineResult => {
       setSelectedSide(null);
 
       setRoundId(activeRoundId);
-      setPhase('betting');
       setStage('betting');
 
       const phaseEndsAt = Date.now() + bettingMs;
@@ -183,7 +178,6 @@ export const useGameEngine = (): UseGameEngineResult => {
         pendingParticipationRef.current = null;
       }
 
-      setPhase('resolving');
       setStage('resolving');
 
       const phaseEndsAt = Date.now() + resolvingMs;
@@ -235,7 +229,6 @@ export const useGameEngine = (): UseGameEngineResult => {
 
       shouldResetBetOnNextRoundRef.current = true;
 
-      setPhase('finished');
       setStage('finished');
 
       const phaseEndsAt = Date.now() + finishedMs;
@@ -261,10 +254,9 @@ export const useGameEngine = (): UseGameEngineResult => {
     };
   }, [storedHistory]);
 
-  const controlsDisabled = phase !== 'betting';
+  const controlsDisabled = stage !== 'betting';
 
   const potentialPayout = selectedSide ? Math.round(currentBet * gameConfig.coefficients[selectedSide]) : 0;
-  const netProfit = potentialPayout - currentBet;
 
   const canAddBet = !controlsDisabled && balance > 0 && currentBet < balance;
   const canResetBet = !controlsDisabled && currentBet > 0;
@@ -322,7 +314,6 @@ export const useGameEngine = (): UseGameEngineResult => {
   };
 
   return {
-    phase,
     stage,
     secondsLeft,
     roundId,
@@ -332,7 +323,6 @@ export const useGameEngine = (): UseGameEngineResult => {
     currentBet,
     selectedChip,
     potentialPayout,
-    netProfit,
     controlsDisabled,
     canAddBet,
     canResetBet,

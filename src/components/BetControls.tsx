@@ -1,4 +1,5 @@
 import { formatNumber } from '../helpers/formatters';
+import { Language } from '../i18n';
 import { ChipValue } from '../types/game';
 
 interface BetControlsProps {
@@ -10,10 +11,49 @@ interface BetControlsProps {
   disabled: boolean;
   canAddBet: boolean;
   canResetBet: boolean;
+  language: Language;
   onSelectChip: (chip: ChipValue) => void;
   onAddBet: () => void;
   onResetBet: () => void;
 }
+
+const labelsByLanguage: Record<
+  Language,
+  {
+    amount: string;
+    payout: string;
+    placeBet: string;
+    reset: string;
+    chipsGroup: string;
+    previousChip: string;
+    nextChip: string;
+    chipAria: (label: string) => string;
+    allIn: string;
+  }
+> = {
+  ru: {
+    amount: 'Сумма',
+    payout: 'Выигрыш',
+    placeBet: 'Поставить',
+    reset: 'Сбросить',
+    chipsGroup: 'Выбор размера ставки',
+    previousChip: 'Предыдущая фишка',
+    nextChip: 'Следующая фишка',
+    chipAria: (label) => `Фишка ${label}`,
+    allIn: 'ALL IN',
+  },
+  en: {
+    amount: 'Amount',
+    payout: 'Payout',
+    placeBet: 'Place Bet',
+    reset: 'Reset',
+    chipsGroup: 'Bet size selection',
+    previousChip: 'Previous chip',
+    nextChip: 'Next chip',
+    chipAria: (label) => `Chip ${label}`,
+    allIn: 'ALL IN',
+  },
+};
 
 const getWrappedIndex = (index: number, length: number): number => {
   if (length === 0) {
@@ -23,20 +63,22 @@ const getWrappedIndex = (index: number, length: number): number => {
   return ((index % length) + length) % length;
 };
 
-const formatCompactChipValue = (chip: ChipValue): string => {
+const formatCompactChipValue = (chip: ChipValue, language: Language): string => {
   if (chip === 'all_in') {
-    return 'ALL';
+    return labelsByLanguage[language].allIn;
   }
 
   if (chip < 1_000) {
-    return formatNumber(chip);
+    return formatNumber(chip, language);
   }
 
   if (chip < 1_000_000) {
-    return `${(chip / 1_000).toFixed(chip >= 10_000 ? 0 : 1).replace('.', ',').replace(',0', '')}K`;
+    const formattedValue = (chip / 1_000).toFixed(chip >= 10_000 ? 0 : 1).replace(/\.0$/, '');
+    return `${language === 'ru' ? formattedValue.replace('.', ',') : formattedValue}K`;
   }
 
-  return `${(chip / 1_000_000).toFixed(chip >= 10_000_000 ? 0 : 1).replace('.', ',').replace(',0', '')}M`;
+  const formattedValue = (chip / 1_000_000).toFixed(chip >= 10_000_000 ? 0 : 1).replace(/\.0$/, '');
+  return `${language === 'ru' ? formattedValue.replace('.', ',') : formattedValue}M`;
 };
 
 const placeBetButtonImageSrc = `${import.meta.env.BASE_URL}${encodeURI('поставить .png')}`;
@@ -50,10 +92,12 @@ export const BetControls = ({
   disabled,
   canAddBet,
   canResetBet,
+  language,
   onSelectChip,
   onAddBet,
   onResetBet,
 }: BetControlsProps) => {
+  const labels = labelsByLanguage[language];
   const showResetButton = currentBet > 0;
   const selectedChipIndex = (() => {
     const index = chips.findIndex((chip) => chip === selectedChip);
@@ -61,7 +105,7 @@ export const BetControls = ({
   })();
 
   const carouselOffsets = [-2, -1, 0, 1, 2];
-  const selectedChipLabel = formatCompactChipValue(selectedChip);
+  const selectedChipLabel = formatCompactChipValue(selectedChip, language);
   const addBetLabel = `+${selectedChipLabel}`;
 
   const shiftChip = (direction: 1 | -1): void => {
@@ -78,14 +122,14 @@ export const BetControls = ({
       <div className="ritual-panel framed-panel bet-reference-dock">
         <div className="bet-reference-top">
           <div className="bet-reference-metric bet-reference-metric--dark relative min-w-0 text-center">
-            <p className="bet-reference-metric__label">Сумма</p>
-            <p className="bet-reference-metric__value num-grobold">{formatNumber(currentBet)}</p>
+            <p className="bet-reference-metric__label">{labels.amount}</p>
+            <p className="bet-reference-metric__value num-grobold">{formatNumber(currentBet, language)}</p>
 
             {showResetButton ? (
               <button
                 type="button"
-                aria-label="Сбросить"
-                title="Сбросить"
+                aria-label={labels.reset}
+                title={labels.reset}
                 disabled={!canResetBet}
                 onClick={onResetBet}
                 className={[
@@ -113,26 +157,21 @@ export const BetControls = ({
             ].join(' ')}
           >
             <img src={placeBetButtonImageSrc} alt="" aria-hidden="true" className="bet-reference-main-btn__bg" />
-            <span className="bet-reference-main-btn__label">Поставить</span>
+            <span className="bet-reference-main-btn__label">{labels.placeBet}</span>
             <span className="bet-reference-main-btn__value num-grobold">{addBetLabel}</span>
-            {showAddBetHint ? (
-              <span className="bet-reference-main-btn__pulse-hint" aria-hidden="true">
-                <span className="bet-reference-main-btn__pulse-core" />
-              </span>
-            ) : null}
           </button>
 
           <div className="bet-reference-metric bet-reference-metric--dark min-w-0 text-center">
-            <p className="bet-reference-metric__label">Выигрыш</p>
-            <p className="bet-reference-metric__value num-grobold">{formatNumber(potentialPayout)}</p>
+            <p className="bet-reference-metric__label">{labels.payout}</p>
+            <p className="bet-reference-metric__value num-grobold">{formatNumber(potentialPayout, language)}</p>
           </div>
         </div>
 
         <div className="bet-reference-chip-rail">
-          <div className="bet-reference-carousel" role="group" aria-label="Выбор размера ставки">
+          <div className="bet-reference-carousel" role="group" aria-label={labels.chipsGroup}>
             <button
               type="button"
-              aria-label="Предыдущая фишка"
+              aria-label={labels.previousChip}
               onClick={() => shiftChip(-1)}
               disabled={disabled || chips.length === 0}
               className={['bet-reference-nav', disabled ? 'cursor-not-allowed opacity-50' : 'active:scale-[0.96]'].join(' ')}
@@ -145,10 +184,12 @@ export const BetControls = ({
             <div className="bet-reference-chip-row">
               {carouselOffsets.map((offset) => {
                 const chip = chips[getWrappedIndex(selectedChipIndex + offset, chips.length)] ?? selectedChip;
-                const label = formatCompactChipValue(chip);
+                const label = formatCompactChipValue(chip, language);
                 const distance = Math.abs(offset);
                 const sizeClass = distance === 0 ? 'bet-reference-chip--center' : distance === 1 ? 'bet-reference-chip--near' : 'bet-reference-chip--far';
                 const isCenter = distance === 0;
+                const isAllIn = chip === 'all_in';
+                const isLongLabel = !isAllIn && label.length >= 4;
 
                 return (
                   <button
@@ -159,13 +200,24 @@ export const BetControls = ({
                     className={[
                       'bet-reference-chip num-grobold rounded-full border transition',
                       sizeClass,
+                      isAllIn ? 'bet-reference-chip--all-in' : '',
+                      isLongLabel ? 'bet-reference-chip--long-label' : '',
                       isCenter ? 'bet-reference-chip--selected border-[#f2c86e] text-[#2c1d09]' : 'border-[#b08a4fdd] text-[#3a240d]',
                       disabled ? 'cursor-not-allowed opacity-60' : 'active:scale-[0.97]',
                     ].join(' ')}
-                    aria-label={`Фишка ${label}`}
+                    aria-label={labels.chipAria(label)}
                     aria-current={isCenter ? 'true' : undefined}
                   >
-                    {label}
+                    <span className="bet-reference-chip__label">
+                      {isAllIn ? (
+                        <>
+                          <span>ALL</span>
+                          <span>IN</span>
+                        </>
+                      ) : (
+                        label
+                      )}
+                    </span>
                   </button>
                 );
               })}
@@ -173,7 +225,7 @@ export const BetControls = ({
 
             <button
               type="button"
-              aria-label="Следующая фишка"
+              aria-label={labels.nextChip}
               onClick={() => shiftChip(1)}
               disabled={disabled || chips.length === 0}
               className={['bet-reference-nav', disabled ? 'cursor-not-allowed opacity-50' : 'active:scale-[0.96]'].join(' ')}

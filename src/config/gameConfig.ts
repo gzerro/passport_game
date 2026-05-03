@@ -18,7 +18,7 @@ export const gameConfig: GameConfig = {
     startingBalance: 1_000_000,
     defaultChip: 100,
   },
-  chips: [100, 500, 1000, 5000, 10000, 50000, 150000],
+  chips: [100, 500, 1000, 5000, 10000, 50000, 'all_in', 150000],
   history: {
     maxEntries: 20,
   },

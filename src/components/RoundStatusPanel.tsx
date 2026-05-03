@@ -1,4 +1,5 @@
 import { formatCountdown } from '../helpers/formatters';
+import { Language } from '../i18n';
 import { HistoryEntry, StageIndicator } from '../types/game';
 
 interface RoundStatusPanelProps {
@@ -6,23 +7,44 @@ interface RoundStatusPanelProps {
   secondsLeft: number;
   currentRoundEntry: HistoryEntry | null;
   currentBet: number;
+  language: Language;
 }
 
-export const RoundStatusPanel = ({ stage, secondsLeft, currentRoundEntry, currentBet }: RoundStatusPanelProps) => {
+const labelsByLanguage: Record<Language, { chooseAmount: string; chooseOutcome: string; waiting: string; noBet: string; win: string; lose: string }> = {
+  ru: {
+    chooseAmount: 'ВЫБЕРИТЕ СУММУ',
+    chooseOutcome: 'ВЫБЕРИТЕ ИСХОД',
+    waiting: 'ОЖИДАНИЕ РЕЗУЛЬТАТА',
+    noBet: 'РАУНД БЕЗ СТАВКИ',
+    win: 'ПОБЕДА',
+    lose: 'ПРОИГРЫШ',
+  },
+  en: {
+    chooseAmount: 'CHOOSE AMOUNT',
+    chooseOutcome: 'CHOOSE OUTCOME',
+    waiting: 'WAITING FOR RESULT',
+    noBet: 'ROUND WITHOUT BET',
+    win: 'WIN',
+    lose: 'LOSS',
+  },
+};
+
+export const RoundStatusPanel = ({ stage, secondsLeft, currentRoundEntry, currentBet, language }: RoundStatusPanelProps) => {
+  const labels = labelsByLanguage[language];
   const statusLabel = (() => {
     if (stage === 'betting') {
-      return currentBet === 0 ? 'ВЫБЕРИТЕ СУММУ' : 'ВЫБЕРИТЕ ИСХОД';
+      return currentBet === 0 ? labels.chooseAmount : labels.chooseOutcome;
     }
 
     if (stage === 'resolving') {
-      return 'ОЖИДАНИЕ РЕЗУЛЬТАТА';
+      return labels.waiting;
     }
 
     if (!currentRoundEntry) {
-      return 'РАУНД БЕЗ СТАВКИ';
+      return labels.noBet;
     }
 
-    return currentRoundEntry.balanceDelta >= 0 ? 'ПОБЕДА' : 'ПРОИГРЫШ';
+    return currentRoundEntry.balanceDelta >= 0 ? labels.win : labels.lose;
   })();
 
   return (
