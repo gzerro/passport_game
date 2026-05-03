@@ -9,7 +9,9 @@ interface HistoryPanelProps {
   balance: number;
   disabled: boolean;
   language: Language;
+  hintsEnabled: boolean;
   onLanguageChange: (language: Language) => void;
+  onHintsEnabledChange: (enabled: boolean) => void;
   onBalanceClick: () => void;
 }
 
@@ -33,6 +35,9 @@ const labelsByLanguage: Record<
     result: string;
     payout: string;
     language: string;
+    hints: string;
+    hintsOn: string;
+    hintsOff: string;
   }
 > = {
   ru: {
@@ -50,6 +55,9 @@ const labelsByLanguage: Record<
     result: 'Итог',
     payout: 'Выплата',
     language: 'Язык',
+    hints: 'Подсказки',
+    hintsOn: 'Вкл',
+    hintsOff: 'Выкл',
   },
   en: {
     openHistory: 'Open history and language',
@@ -66,6 +74,9 @@ const labelsByLanguage: Record<
     result: 'Result',
     payout: 'Payout',
     language: 'Language',
+    hints: 'Hints',
+    hintsOn: 'On',
+    hintsOff: 'Off',
   },
 };
 
@@ -75,7 +86,9 @@ export const HistoryPanel = ({
   balance,
   disabled,
   language,
+  hintsEnabled,
   onLanguageChange,
+  onHintsEnabledChange,
   onBalanceClick,
 }: HistoryPanelProps) => {
   const [modalEntry, setModalEntry] = useState<HistoryEntry | null>(null);
@@ -179,6 +192,22 @@ export const HistoryPanel = ({
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-[#b9955f55] bg-[#2b1f13d8] px-3 py-2">
+              <span className="text-[11px] uppercase tracking-[0.12em] text-[#d7bf8f]">{labels.hints}</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={hintsEnabled}
+                onClick={() => onHintsEnabledChange(!hintsEnabled)}
+                className={['settings-switch', hintsEnabled ? 'settings-switch--on' : ''].join(' ')}
+              >
+                <span className="settings-switch__track" aria-hidden="true">
+                  <span className="settings-switch__thumb" />
+                </span>
+                <span className="settings-switch__label">{hintsEnabled ? labels.hintsOn : labels.hintsOff}</span>
+              </button>
             </div>
 
             {entries.length === 0 ? (

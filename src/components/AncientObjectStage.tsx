@@ -15,6 +15,8 @@ interface AncientObjectStageProps {
   onSelect: (side: BetSide) => void;
   currentBet: number;
   language: Language;
+  hintsEnabled: boolean;
+  onHintsEnabledChange: (enabled: boolean) => void;
 }
 
 const sideImageById: Record<BetSide, string> = {
@@ -374,6 +376,7 @@ const sceneLabelsByLanguage: Record<
     deny: string;
     decisionGroup: string;
     passport: string;
+    hideHints: string;
   }
 > = {
   ru: {
@@ -387,6 +390,7 @@ const sceneLabelsByLanguage: Record<
     deny: 'Отказать',
     decisionGroup: 'Решение по человеку',
     passport: 'Паспорт',
+    hideHints: 'Скрыть подсказки',
   },
   en: {
     person: 'Person',
@@ -399,6 +403,7 @@ const sceneLabelsByLanguage: Record<
     deny: 'Deny',
     decisionGroup: 'Decision for the person',
     passport: 'Passport',
+    hideHints: 'Hide hints',
   },
 };
 
@@ -536,6 +541,8 @@ export const AncientObjectStage = ({
   onSelect,
   currentBet,
   language,
+  hintsEnabled,
+  onHintsEnabledChange,
 }: AncientObjectStageProps) => {
   const [objectImageFailed, setObjectImageFailed] = useState<boolean>(false);
   const [sideImageFailed, setSideImageFailed] = useState<Record<BetSide, boolean>>({
@@ -561,7 +568,8 @@ export const AncientObjectStage = ({
   const isChoiceScene = stage === 'betting' || stage === 'resolving';
   const isResultScene = stage === 'finished' && currentRoundEntry !== null;
   const isPassportControlScene = isChoiceScene || isResultScene;
-  const showGuideMan = stage === 'betting' && !hasPreparedBet;
+  const showGuideMan =
+    hintsEnabled && !hasPreparedBet && (stage === 'betting' || stage === 'resolving' || (stage === 'finished' && currentRoundEntry === null));
   const isChoiceSelectionDisabled = disabled || !hasPreparedBet;
   const shouldPulseChoiceButtons = isChoiceScene && !isChoiceSelectionDisabled && selectedSide === null;
   const choiceWalkClass = stage === 'resolving' && selectedSide !== null ? `ancient-object__choice-person--walk-${selectedSide}` : '';
@@ -778,6 +786,15 @@ export const AncientObjectStage = ({
               <p className="ancient-object__guide-man-speech-copy">{guideManSpeech.copy}</p>
             </div>
           </div>
+          <button
+            type="button"
+            className="ancient-object__guide-close"
+            aria-label={sceneLabels.hideHints}
+            title={sceneLabels.hideHints}
+            onClick={() => onHintsEnabledChange(false)}
+          >
+            <span aria-hidden="true">×</span>
+          </button>
           <img src={guideManImageSrc} alt="" aria-hidden="true" className="ancient-object__guide-man" />
         </>
       ) : null}

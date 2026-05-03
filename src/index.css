@@ -39,9 +39,9 @@
   --chip-height: 36px;
   --history-card-min: 88px;
   --arena-image-max: min(92%, 310px);
-  --guide-man-width: clamp(212px, 54vw, 336px);
+  --guide-man-width: clamp(190px, 58cqw, 276px);
   --guide-man-left: 0px;
-  --guide-man-bottom: -24px;
+  --guide-man-bottom: -18px;
 }
 
 html,
@@ -1306,7 +1306,7 @@ img {
   right: auto;
   bottom: var(--guide-man-bottom);
   z-index: 8;
-  width: calc(var(--guide-man-width) * 1.5);
+  width: var(--guide-man-width);
   max-width: none;
   height: auto;
   pointer-events: none;
@@ -1333,12 +1333,13 @@ img {
 
 .ancient-object__guide-man-speech {
   position: absolute;
-  left: calc(var(--guide-man-left) + clamp(104px, 29vw, 154px));
-  right: auto;
-  bottom: calc(var(--guide-man-bottom) + clamp(154px, 24vh, 210px));
+  left: calc(var(--guide-man-left) + clamp(112px, 32cqw, 152px));
+  right: 8px;
+  bottom: calc(var(--guide-man-bottom) + clamp(140px, 38cqw, 178px));
   z-index: 9;
   margin: 0;
-  width: clamp(216px, 61vw, 282px);
+  width: auto;
+  max-width: 246px;
   aspect-ratio: 1000 / 467;
   color: #28313f;
   text-align: center;
@@ -1363,6 +1364,8 @@ img {
   bottom: 32%;
   display: grid;
   place-content: center;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .ancient-object__guide-man-speech-title,
@@ -1371,17 +1374,48 @@ img {
 }
 
 .ancient-object__guide-man-speech-title {
-  font-size: clamp(0.74rem, 2.35vw, 0.94rem);
+  font-size: clamp(0.66rem, 2.7cqw, 0.8rem);
   line-height: 1.05;
   font-weight: 800;
   color: #273040;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .ancient-object__guide-man-speech-copy {
-  margin-top: 0.26rem;
-  font-size: clamp(0.62rem, 1.95vw, 0.76rem);
-  line-height: 1.08;
+  margin-top: 0.18rem;
+  font-size: clamp(0.54rem, 2.15cqw, 0.64rem);
+  line-height: 1.04;
   color: #273040;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.ancient-object__guide-close {
+  position: absolute;
+  left: calc(var(--guide-man-left) + clamp(66px, 18cqw, 90px));
+  bottom: calc(var(--guide-man-bottom) + clamp(200px, 52cqw, 248px));
+  z-index: 10;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(245, 245, 245, 0.9);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(64, 67, 76, 0.96), rgba(24, 26, 31, 0.98));
+  color: #fff8e6;
+  font-size: 1.05rem;
+  line-height: 1;
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+}
+
+.ancient-object__guide-close:active {
+  transform: scale(0.96);
 }
 
 .ancient-object__ritual-cast {
@@ -2584,7 +2618,7 @@ html[data-vh-tier='compact'] {
   --chip-height: 34px;
   --history-card-min: 82px;
   --arena-image-max: min(88%, 260px);
-  --guide-man-width: clamp(186px, 50vw, 294px);
+  --guide-man-width: clamp(176px, 54cqw, 252px);
   --guide-man-left: 0px;
   --guide-man-bottom: -20px;
 }
@@ -2839,7 +2873,7 @@ html[data-vh-tier='tight'] {
   --chip-height: 32px;
   --history-card-min: 78px;
   --arena-image-max: min(84%, 230px);
-  --guide-man-width: clamp(163px, 46vw, 266px);
+  --guide-man-width: clamp(158px, 48cqw, 224px);
   --guide-man-left: 0px;
   --guide-man-bottom: -16px;
 }
@@ -2987,7 +3021,7 @@ html[data-vh-tier='ultra'] {
   --chip-height: 30px;
   --history-card-min: 72px;
   --arena-image-max: min(80%, 200px);
-  --guide-man-width: clamp(147px, 42vw, 227px);
+  --guide-man-width: clamp(142px, 43cqw, 196px);
   --guide-man-left: 0px;
   --guide-man-bottom: -14px;
 }
@@ -3125,6 +3159,79 @@ html[data-vh-tier='ultra'] {
 .history-pill--empty {
   border-color: #888888;
   background: linear-gradient(180deg, #666666 0%, #4f4f4f 100%);
+  min-width: clamp(118px, 32cqw, 148px);
+}
+
+.history-strip__entries:has(.history-pill--empty) {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.history-pill--empty span {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(0.78rem, 3.2cqw, 0.94rem);
+}
+
+.settings-switch {
+  display: inline-flex;
+  min-width: 92px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #d0bb8d;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.settings-switch__track {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 1px solid rgba(182, 147, 93, 0.62);
+  background: linear-gradient(180deg, #17130e 0%, #2a2116 100%);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.42),
+    0 1px 0 rgba(255, 238, 190, 0.1);
+}
+
+.settings-switch__thumb {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #8b806d 0%, #4a4235 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 2px 5px rgba(0, 0, 0, 0.28);
+  transition:
+    transform 180ms ease,
+    background 180ms ease;
+}
+
+.settings-switch--on .settings-switch__track {
+  border-color: rgba(234, 194, 108, 0.9);
+  background: linear-gradient(180deg, #4d3a18 0%, #251b0e 100%);
+}
+
+.settings-switch--on .settings-switch__thumb {
+  transform: translateX(18px);
+  background: linear-gradient(180deg, #f4d684 0%, #bf8431 100%);
+}
+
+.settings-switch__label {
+  min-width: 28px;
+  text-align: left;
 }
 
 .history-strip__balance {
@@ -4082,17 +4189,18 @@ html[data-vh-tier='ultra'] .ancient-object__passport-id {
 
 @media (min-width: 768px) {
   .ancient-object__guide-man {
-    width: min(52%, 248px);
+    width: var(--guide-man-width);
     left: 0;
     right: auto;
-    bottom: -18px;
+    bottom: var(--guide-man-bottom);
   }
 
   .ancient-object__guide-man-speech {
-    left: clamp(86px, 21vw, 128px);
-    right: auto;
-    bottom: clamp(142px, 23vh, 190px);
-    width: min(55%, 228px);
+    left: calc(var(--guide-man-left) + clamp(112px, 32cqw, 152px));
+    right: 8px;
+    bottom: calc(var(--guide-man-bottom) + clamp(140px, 38cqw, 178px));
+    width: auto;
+    max-width: 246px;
   }
 
   .top-history-strip {

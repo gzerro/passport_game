@@ -14,6 +14,7 @@ import { BetSide, HistoryEntry, StageIndicator } from './types/game';
 
 const fallbackObjectId = 'character-1';
 const bootLoaderStorageKey = 'passport-game.bootSeen.v1';
+const hintsStorageKey = 'passport-game.hintsEnabled.v1';
 const bootLoaderTimeoutMs = 2_500;
 
 const pickRandomObjectId = (): string => {
@@ -77,6 +78,30 @@ const markBootLoaderSeen = (): void => {
 
   try {
     window.localStorage.setItem(bootLoaderStorageKey, '1');
+  } catch {
+    // no-op if storage is blocked
+  }
+};
+
+const readHintsEnabled = (): boolean => {
+  if (typeof window === 'undefined') {
+    return true;
+  }
+
+  try {
+    return window.localStorage.getItem(hintsStorageKey) !== '0';
+  } catch {
+    return true;
+  }
+};
+
+const writeHintsEnabled = (enabled: boolean): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(hintsStorageKey, enabled ? '1' : '0');
   } catch {
     // no-op if storage is blocked
   }
@@ -146,7 +171,17 @@ const sideLabelsByLanguage: Record<Language, Record<BetSide, string>> = {
   },
 };
 
-const GameScreen = ({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) => {
+const GameScreen = ({
+  language,
+  hintsEnabled,
+  onLanguageChange,
+  onHintsEnabledChange,
+}: {
+  language: Language;
+  hintsEnabled: boolean;
+  onLanguageChange: (language: Language) => void;
+  onHintsEnabledChange: (enabled: boolean) => void;
+}) => {
   const {
     stage,
     secondsLeft,
@@ -284,7 +319,9 @@ const GameScreen = ({ language, onLanguageChange }: { language: Language; onLang
             balance={balance}
             disabled={controlsDisabled}
             language={language}
+            hintsEnabled={hintsEnabled}
             onLanguageChange={onLanguageChange}
+            onHintsEnabledChange={onHintsEnabledChange}
             onBalanceClick={() => setIsTopUpOpen(true)}
           />
         </header>
@@ -311,6 +348,8 @@ const GameScreen = ({ language, onLanguageChange }: { language: Language; onLang
               onSelect={selectSide}
               currentBet={currentBet}
               language={language}
+              hintsEnabled={hintsEnabled}
+              onHintsEnabledChange={onHintsEnabledChange}
             />
           </div>
         </main>
@@ -355,10 +394,16 @@ const App = () => {
   const [isBootReady, setIsBootReady] = useState<boolean>(() => hasSeenBootLoader());
   const [bootProgress, setBootProgress] = useState<number>(() => (hasSeenBootLoader() ? 100 : 0));
   const [language, setLanguage] = useState<Language>(() => readLanguage());
+  const [hintsEnabled, setHintsEnabled] = useState<boolean>(() => readHintsEnabled());
 
   const handleLanguageChange = (nextLanguage: Language): void => {
     setLanguage(nextLanguage);
     writeLanguage(nextLanguage);
+  };
+
+  const handleHintsEnabledChange = (enabled: boolean): void => {
+    setHintsEnabled(enabled);
+    writeHintsEnabled(enabled);
   };
 
   useEffect(() => {
@@ -426,7 +471,18 @@ const App = () => {
 
   return (
     <div className="app-root w-full max-w-full overflow-hidden bg-[#100d09] text-[#f2e5c0]">
-      <div className="app-frame">{isBootReady ? <GameScreen language={language} onLanguageChange={handleLanguageChange} /> : <BootLoader progress={bootProgress} />}</div>
+      <div className="app-frame">
+        {isBootReady ? (
+          <GameScreen
+            language={language}
+            hintsEnabled={hintsEnabled}
+            onLanguageChange={handleLanguageChange}
+            onHintsEnabledChange={handleHintsEnabledChange}
+          />
+        ) : (
+          <BootLoader progress={bootProgress} />
+        )}
+      </div>
     </div>
   );
 };
