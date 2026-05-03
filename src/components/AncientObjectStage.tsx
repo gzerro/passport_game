@@ -566,7 +566,8 @@ export const AncientObjectStage = ({
 
   const hasPreparedBet = currentBet > 0;
   const isChoiceScene = stage === 'betting' || stage === 'resolving';
-  const isResultScene = stage === 'finished' && currentRoundEntry !== null;
+  const hasSettledBetResult = stage === 'finished' && hasPreparedBet && selectedSide !== null && currentRoundResult !== null;
+  const isResultScene = stage === 'finished' && (currentRoundEntry !== null || hasSettledBetResult);
   const isPassportControlScene = isChoiceScene || isResultScene;
   const showGuideMan =
     hintsEnabled && !hasPreparedBet && (stage === 'betting' || stage === 'resolving' || (stage === 'finished' && currentRoundEntry === null));
@@ -582,16 +583,22 @@ export const AncientObjectStage = ({
     [guideManSpeechVariants, roundId],
   );
   const passportProfile = useMemo(() => buildPassportProfile(roundId, objectId, language), [language, objectId, roundId]);
-  const visiblePassportStampSide = isResultScene ? currentRoundEntry.selectedSide : selectedSide;
-  const resultBalanceDelta = currentRoundEntry?.balanceDelta ?? 0;
+  const visiblePassportStampSide = isResultScene ? (currentRoundEntry?.selectedSide ?? selectedSide) : selectedSide;
+  const fallbackResultBalanceDelta =
+    hasSettledBetResult && selectedSide !== null && currentRoundResult !== null
+      ? selectedSide === currentRoundResult
+        ? Math.round(currentBet * coefficients[selectedSide]) - currentBet
+        : -currentBet
+      : 0;
+  const resultBalanceDelta = currentRoundEntry?.balanceDelta ?? fallbackResultBalanceDelta;
   const resultAmountLabel = `${resultBalanceDelta >= 0 ? '+' : ''}${formatNumber(resultBalanceDelta, language)}`;
   const outcomePersonaProfile = useMemo(
     () => buildOutcomePersonaProfile(roundId, currentRoundResult, language),
     [currentRoundResult, language, roundId],
   );
   const outcomeReasonProfile = useMemo(
-    () => buildOutcomeReasonProfile(roundId, currentRoundEntry?.selectedSide ?? null, currentRoundResult, language),
-    [currentRoundEntry?.selectedSide, currentRoundResult, language, roundId],
+    () => buildOutcomeReasonProfile(roundId, currentRoundEntry?.selectedSide ?? selectedSide, currentRoundResult, language),
+    [currentRoundEntry?.selectedSide, currentRoundResult, language, roundId, selectedSide],
   );
   const resultTone = outcomeReasonProfile?.tone ?? (resultBalanceDelta >= 0 ? 'good' : 'bad');
 
