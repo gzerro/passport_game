@@ -1,5 +1,6 @@
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { installCdpTraps, mountDevToolsBlockOverlay } from './devTools/cdpTraps';
 import './index.css';
 
 interface TelegramWebAppLike {
@@ -93,5 +94,10 @@ const setupViewportSync = (): (() => void) => {
 
 const disposeViewportSync = setupViewportSync();
 window.addEventListener('beforeunload', disposeViewportSync, { once: true });
+
+installCdpTraps(() => {
+  mountDevToolsBlockOverlay();
+  window.dispatchEvent(new CustomEvent('passport-game-cdp-detected'));
+});
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
