@@ -27,6 +27,7 @@ interface LastRoundReveal {
 export interface UseGameEngineResult {
   stage: StageIndicator;
   secondsLeft: number;
+  bettingProgress: number;
   roundId: number;
   balance: number;
   history: HistoryEntry[];
@@ -35,13 +36,10 @@ export interface UseGameEngineResult {
   selectedChip: ChipValue;
   potentialPayout: number;
   controlsDisabled: boolean;
-  canAddBet: boolean;
-  canResetBet: boolean;
   lastRoundReveal: LastRoundReveal | null;
   selectSide: (side: BetSide) => void;
+  clearSelectedSide: () => void;
   selectChip: (chip: ChipValue) => void;
-  addBet: () => void;
-  resetBet: () => void;
   topUpBalance: (amount: number) => void;
 }
 
@@ -51,6 +49,24 @@ const getNextRoundId = (entries: HistoryEntry[]): number =>
 const chooseRandomResult = (): RoundResult =>
   Math.random() < 0.5 ? gameConfig.sides[0].id : gameConfig.sides[1].id;
 
+const getBetAmountForChip = (chip: ChipValue, balance: number): number => {
+  const availableBalance = Math.max(0, Math.floor(balance));
+
+  if (availableBalance <= 0) {
+    return 0;
+  }
+
+  if (chip === 'all_in') {
+    return availableBalance;
+  }
+
+  if (chip > availableBalance) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor(chip));
+};
+
 export const useGameEngine = (): UseGameEngineResult => {
   const storedBalance = useMemo(() => loadBalance(), []);
   const storedHistory = useMemo(() => loadHistory(), []);
@@ -58,14 +74,15 @@ export const useGameEngine = (): UseGameEngineResult => {
 
   const [stage, setStage] = useState<StageIndicator>('betting');
   const [secondsLeft, setSecondsLeft] = useState<number>(gameConfig.phases.bettingDurationSec);
+  const [bettingProgress, setBettingProgress] = useState<number>(1);
   const [roundId, setRoundId] = useState<number>(() => getNextRoundId(storedHistory));
 
   const [balance, setBalance] = useState<number>(storedBalance);
   const [history, setHistory] = useState<HistoryEntry[]>(storedHistory);
 
   const [selectedSide, setSelectedSide] = useState<BetSide | null>(null);
-  const [currentBet, setCurrentBet] = useState<number>(0);
   const [selectedChip, setSelectedChip] = useState<ChipValue>(storedChip);
+  const [currentBet, setCurrentBet] = useState<number>(() => getBetAmountForChip(storedChip, storedBalance));
 
   const [lastRoundReveal, setLastRoundReveal] = useState<LastRoundReveal | null>(null);
 
@@ -74,7 +91,6 @@ export const useGameEngine = (): UseGameEngineResult => {
   const pendingParticipationRef = useRef<PendingParticipation | null>(null);
   const hiddenRoundResultRef = useRef<RoundResult | null>(null);
   const balanceRef = useRef<number>(balance);
-  const shouldResetBetOnNextRoundRef = useRef<boolean>(false);
 
   useEffect(() => {
     selectedSideRef.current = selectedSide;
@@ -101,6 +117,19 @@ export const useGameEngine = (): UseGameEngineResult => {
   }, [selectedChip]);
 
   useEffect(() => {
+    if (stage !== 'betting') {
+      return;
+    }
+
+    const nextBetAmount = getBetAmountForChip(selectedChip, balance);
+    setCurrentBet(nextBetAmount);
+
+    if (nextBetAmount === 0 && selectedSideRef.current !== null) {
+      setSelectedSide(null);
+    }
+  }, [balance, selectedChip, stage]);
+
+  useEffect(() => {
     let cancelled = false;
     let phaseTimeout: number | null = null;
     let countdownInterval: number | null = null;
@@ -109,24 +138,30 @@ export const useGameEngine = (): UseGameEngineResult => {
     const resolvingMs = gameConfig.phases.resolvingDurationSec * 1000;
     const finishedMs = gameConfig.phases.finishedIndicatorDurationMs;
 
-    const updateCountdown = (phaseEndsAt: number): void => {
+    const updateCountdown = (phaseEndsAt: number, phaseDurationMs: number, phase: StageIndicator): void => {
       if (cancelled) {
         return;
       }
 
-      const seconds = Math.max(0, Math.ceil((phaseEndsAt - Date.now()) / 1000));
+      const millisecondsLeft = Math.max(0, phaseEndsAt - Date.now());
+      const seconds = Math.max(0, Math.ceil(millisecondsLeft / 1000));
       setSecondsLeft(seconds);
+      setBettingProgress(
+        phase === 'betting'
+          ? Math.min(1, Math.max(0, millisecondsLeft / phaseDurationMs))
+          : 0,
+      );
     };
 
-    const startCountdown = (phaseEndsAt: number): void => {
-      updateCountdown(phaseEndsAt);
+    const startCountdown = (phaseEndsAt: number, phaseDurationMs: number, phase: StageIndicator): void => {
+      updateCountdown(phaseEndsAt, phaseDurationMs, phase);
 
       if (countdownInterval !== null) {
         window.clearInterval(countdownInterval);
       }
 
       countdownInterval = window.setInterval(() => {
-        updateCountdown(phaseEndsAt);
+        updateCountdown(phaseEndsAt, phaseDurationMs, phase);
       }, 250);
     };
 
@@ -135,19 +170,14 @@ export const useGameEngine = (): UseGameEngineResult => {
         return;
       }
 
-      // Move UI reset to the next round so finished status keeps the previous
-      // round state visible until the next betting window actually begins.
-      if (shouldResetBetOnNextRoundRef.current) {
-        setCurrentBet(0);
-        shouldResetBetOnNextRoundRef.current = false;
-      }
+      setCurrentBet(getBetAmountForChip(selectedChip, balanceRef.current));
       setSelectedSide(null);
 
       setRoundId(activeRoundId);
       setStage('betting');
 
       const phaseEndsAt = Date.now() + bettingMs;
-      startCountdown(phaseEndsAt);
+      startCountdown(phaseEndsAt, bettingMs, 'betting');
 
       phaseTimeout = window.setTimeout(() => {
         startResolvingPhase(activeRoundId);
@@ -181,7 +211,7 @@ export const useGameEngine = (): UseGameEngineResult => {
       setStage('resolving');
 
       const phaseEndsAt = Date.now() + resolvingMs;
-      startCountdown(phaseEndsAt);
+      startCountdown(phaseEndsAt, resolvingMs, 'resolving');
 
       phaseTimeout = window.setTimeout(() => {
         finishResolvingPhase(activeRoundId);
@@ -227,12 +257,10 @@ export const useGameEngine = (): UseGameEngineResult => {
       pendingParticipationRef.current = null;
       hiddenRoundResultRef.current = null;
 
-      shouldResetBetOnNextRoundRef.current = true;
-
       setStage('finished');
 
       const phaseEndsAt = Date.now() + finishedMs;
-      startCountdown(phaseEndsAt);
+      startCountdown(phaseEndsAt, finishedMs, 'finished');
 
       phaseTimeout = window.setTimeout(() => {
         startBettingPhase(activeRoundId + 1);
@@ -255,45 +283,23 @@ export const useGameEngine = (): UseGameEngineResult => {
   }, [storedHistory]);
 
   const controlsDisabled = stage !== 'betting';
-
-  const potentialPayout = selectedSide ? Math.round(currentBet * gameConfig.coefficients[selectedSide]) : 0;
-
-  const canAddBet = !controlsDisabled && balance > 0 && currentBet < balance;
-  const canResetBet = !controlsDisabled && currentBet > 0;
-
-  const addBet = (): void => {
-    if (controlsDisabled || balanceRef.current <= 0 || currentBetRef.current >= balanceRef.current) {
-      return;
-    }
-
-    setCurrentBet((previousBet) => {
-      const availableBalance = balanceRef.current;
-      if (availableBalance <= 0) {
-        return 0;
-      }
-
-      if (selectedChip === 'all_in') {
-        return availableBalance;
-      }
-
-      return Math.min(previousBet + selectedChip, availableBalance);
-    });
-  };
-
-  const resetBet = (): void => {
-    if (controlsDisabled) {
-      return;
-    }
-
-    setCurrentBet(0);
-  };
+  const activeCoefficient = selectedSide ? gameConfig.coefficients[selectedSide] : gameConfig.coefficients.yes;
+  const potentialPayout = currentBet > 0 ? Math.round(currentBet * activeCoefficient) : 0;
 
   const selectSide = (side: BetSide): void => {
-    if (controlsDisabled) {
+    if (controlsDisabled || currentBetRef.current <= 0) {
       return;
     }
 
     setSelectedSide(side);
+  };
+
+  const clearSelectedSide = (): void => {
+    if (controlsDisabled) {
+      return;
+    }
+
+    setSelectedSide(null);
   };
 
   const selectChip = (chip: ChipValue): void => {
@@ -302,6 +308,12 @@ export const useGameEngine = (): UseGameEngineResult => {
     }
 
     setSelectedChip(chip);
+    const nextBetAmount = getBetAmountForChip(chip, balanceRef.current);
+    setCurrentBet(nextBetAmount);
+
+    if (nextBetAmount === 0) {
+      setSelectedSide(null);
+    }
   };
 
   const topUpBalance = (amount: number): void => {
@@ -316,6 +328,7 @@ export const useGameEngine = (): UseGameEngineResult => {
   return {
     stage,
     secondsLeft,
+    bettingProgress,
     roundId,
     balance,
     history,
@@ -324,13 +337,10 @@ export const useGameEngine = (): UseGameEngineResult => {
     selectedChip,
     potentialPayout,
     controlsDisabled,
-    canAddBet,
-    canResetBet,
     lastRoundReveal,
     selectSide,
+    clearSelectedSide,
     selectChip,
-    addBet,
-    resetBet,
     topUpBalance,
   };
 };

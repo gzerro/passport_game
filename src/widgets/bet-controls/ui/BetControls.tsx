@@ -1,57 +1,46 @@
-import { ChipValue } from '@/entities/game';
+import type { CSSProperties } from 'react';
+import { BetSide, ChipValue } from '@/entities/game';
 import { Language } from '@/shared/i18n';
 import { formatNumber } from '@/shared/lib/formatters';
 
 interface BetControlsProps {
   chips: readonly ChipValue[];
   selectedChip: ChipValue;
-  currentBet: number;
+  selectedSide: BetSide | null;
   potentialPayout: number;
-  showAddBetHint: boolean;
+  bettingProgress: number;
   disabled: boolean;
-  canAddBet: boolean;
-  canResetBet: boolean;
   language: Language;
   onSelectChip: (chip: ChipValue) => void;
-  onAddBet: () => void;
-  onResetBet: () => void;
+  onClearSelection: () => void;
 }
 
 const labelsByLanguage: Record<
   Language,
   {
-    amount: string;
     payout: string;
-    placeBet: string;
-    reset: string;
+    cancel: string;
     chipsGroup: string;
-    previousChip: string;
-    nextChip: string;
     chipAria: (label: string) => string;
+    cancelAria: string;
     allIn: string;
   }
 > = {
   ru: {
-    amount: 'Сумма',
     payout: 'Выигрыш',
-    placeBet: 'Поставить',
-    reset: 'Сбросить',
+    cancel: 'Отменить',
     chipsGroup: 'Выбор размера ставки',
-    previousChip: 'Предыдущая фишка',
-    nextChip: 'Следующая фишка',
     chipAria: (label) => `Фишка ${label}`,
-    allIn: 'ALL IN',
+    cancelAria: 'Отменить выбор исхода',
+    allIn: 'ALL',
   },
   en: {
-    amount: 'Amount',
     payout: 'Payout',
-    placeBet: 'Place Bet',
-    reset: 'Reset',
+    cancel: 'Cancel',
     chipsGroup: 'Bet size selection',
-    previousChip: 'Previous chip',
-    nextChip: 'Next chip',
     chipAria: (label) => `Chip ${label}`,
-    allIn: 'ALL IN',
+    cancelAria: 'Cancel selected outcome',
+    allIn: 'ALL',
   },
 };
 
@@ -81,106 +70,146 @@ const formatCompactChipValue = (chip: ChipValue, language: Language): string => 
   return `${language === 'ru' ? formattedValue.replace('.', ',') : formattedValue}M`;
 };
 
-const placeBetButtonImageSrc = `${import.meta.env.BASE_URL}${encodeURI('поставить .png')}`;
+const getChipPalette = (chip: ChipValue): CSSProperties => {
+  if (chip === 'all_in') {
+    return {
+      '--chip-accent': '#1f2d48',
+      '--chip-accent-soft': '#f5f7fb',
+      '--chip-rim-dark': '#0f1727',
+      '--chip-rim-light': '#95a6bf',
+      '--chip-center': '#fbfcff',
+      '--chip-center-alt': '#d5deeb',
+      '--chip-ink': '#21314f',
+    } as CSSProperties;
+  }
+
+  const paletteByChip: Partial<Record<number, CSSProperties>> = {
+    100: {
+      '--chip-accent': '#f5bb1b',
+      '--chip-accent-soft': '#1d2532',
+      '--chip-rim-dark': '#293244',
+      '--chip-rim-light': '#7ea2d8',
+      '--chip-center': '#fbfcff',
+      '--chip-center-alt': '#dfe9fb',
+      '--chip-ink': '#23314e',
+    } as CSSProperties,
+    500: {
+      '--chip-accent': '#4ecb7d',
+      '--chip-accent-soft': '#204430',
+      '--chip-rim-dark': '#223244',
+      '--chip-rim-light': '#84bde8',
+      '--chip-center': '#fbfcff',
+      '--chip-center-alt': '#dfe9fb',
+      '--chip-ink': '#20324f',
+    } as CSSProperties,
+    1000: {
+      '--chip-accent': '#8150d7',
+      '--chip-accent-soft': '#2c1f53',
+      '--chip-rim-dark': '#223244',
+      '--chip-rim-light': '#88b8ea',
+      '--chip-center': '#fbfcff',
+      '--chip-center-alt': '#dfe9fb',
+      '--chip-ink': '#22324f',
+    } as CSSProperties,
+    5000: {
+      '--chip-accent': '#56c7ed',
+      '--chip-accent-soft': '#214c66',
+      '--chip-rim-dark': '#223244',
+      '--chip-rim-light': '#89bbe9',
+      '--chip-center': '#fbfcff',
+      '--chip-center-alt': '#dfe9fb',
+      '--chip-ink': '#213250',
+    } as CSSProperties,
+    10000: {
+      '--chip-accent': '#ff8d45',
+      '--chip-accent-soft': '#5a2d1f',
+      '--chip-rim-dark': '#283042',
+      '--chip-rim-light': '#91b7e1',
+      '--chip-center': '#fbfcff',
+      '--chip-center-alt': '#dfe9fb',
+      '--chip-ink': '#24314e',
+    } as CSSProperties,
+    50000: {
+      '--chip-accent': '#d95555',
+      '--chip-accent-soft': '#4e1f29',
+      '--chip-rim-dark': '#2a3042',
+      '--chip-rim-light': '#8db6e0',
+      '--chip-center': '#fbfcff',
+      '--chip-center-alt': '#dfe9fb',
+      '--chip-ink': '#24304b',
+    } as CSSProperties,
+    150000: {
+      '--chip-accent': '#2f3f58',
+      '--chip-accent-soft': '#d4ac58',
+      '--chip-rim-dark': '#171d28',
+      '--chip-rim-light': '#8db3dc',
+      '--chip-center': '#fbfcff',
+      '--chip-center-alt': '#dfe9fb',
+      '--chip-ink': '#24304a',
+    } as CSSProperties,
+  };
+
+  return paletteByChip[chip] ?? {
+    '--chip-accent': '#56c7ed',
+    '--chip-accent-soft': '#214c66',
+    '--chip-rim-dark': '#223244',
+    '--chip-rim-light': '#89bbe9',
+    '--chip-center': '#fbfcff',
+    '--chip-center-alt': '#dfe9fb',
+    '--chip-ink': '#213250',
+  } as CSSProperties;
+};
 
 export const BetControls = ({
   chips,
   selectedChip,
-  currentBet,
+  selectedSide,
   potentialPayout,
-  showAddBetHint,
+  bettingProgress,
   disabled,
-  canAddBet,
-  canResetBet,
   language,
   onSelectChip,
-  onAddBet,
-  onResetBet,
+  onClearSelection,
 }: BetControlsProps) => {
   const labels = labelsByLanguage[language];
-  const showResetButton = currentBet > 0;
   const selectedChipIndex = (() => {
     const index = chips.findIndex((chip) => chip === selectedChip);
     return index >= 0 ? index : 0;
   })();
 
   const carouselOffsets = [-2, -1, 0, 1, 2];
-  const selectedChipLabel = formatCompactChipValue(selectedChip, language);
-  const addBetLabel = `+${selectedChipLabel}`;
-
-  const shiftChip = (direction: 1 | -1): void => {
-    if (disabled || chips.length === 0) {
-      return;
-    }
-
-    const nextChip = chips[getWrappedIndex(selectedChipIndex + direction, chips.length)];
-    onSelectChip(nextChip);
-  };
+  const showCancelSelection = selectedSide !== null && !disabled;
+  const clampedBettingProgress = Math.min(1, Math.max(0, bettingProgress));
 
   return (
     <section className="bet-controls">
       <div className="ritual-panel framed-panel bet-reference-dock">
-        <div className="bet-reference-top">
-          <div className="bet-reference-metric bet-reference-metric--dark relative min-w-0 text-center">
-            <p className="bet-reference-metric__label">{labels.amount}</p>
-            <p className="bet-reference-metric__value num-grobold">{formatNumber(currentBet, language)}</p>
+        <div className="bet-reference-chip-rail">
+          <div className={['bet-reference-chip-summary-row', showCancelSelection ? 'bet-reference-chip-summary-row--with-action' : ''].join(' ')}>
+            <div className="bet-reference-chip-summary bet-reference-metric bet-reference-metric--dark min-w-0 text-center">
+              <p className="bet-reference-metric__label">{labels.payout}</p>
+              <p className="bet-reference-metric__value num-grobold">{formatNumber(potentialPayout, language)}</p>
+            </div>
 
-            {showResetButton ? (
+            {showCancelSelection ? (
               <button
                 type="button"
-                aria-label={labels.reset}
-                title={labels.reset}
-                disabled={!canResetBet}
-                onClick={onResetBet}
-                className={[
-                  'bet-reference-reset absolute right-1 top-1 grid place-items-center rounded-full border transition',
-                  canResetBet
-                    ? 'border-[#b3925d99] bg-[#2f2518d9] text-[#e7d4ab] active:scale-[0.98]'
-                    : 'cursor-not-allowed border-[#6f5a3c66] bg-[#30261ab3] text-[#8a7859]',
-                ].join(' ')}
+                onClick={onClearSelection}
+                className="bet-reference-action-btn"
+                aria-label={labels.cancelAria}
               >
-                <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <path d="M12 5V2L8 6L12 10V7C15.3 7 18 9.7 18 13C18 16.3 15.3 19 12 19C8.7 19 6 16.3 6 13" />
-                </svg>
+                <span className="bet-reference-action-btn__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <path d="M6 6L18 18" />
+                    <path d="M18 6L6 18" />
+                  </svg>
+                </span>
+                <span className="bet-reference-action-btn__label">{labels.cancel}</span>
               </button>
             ) : null}
           </div>
 
-          <button
-            type="button"
-            disabled={!canAddBet}
-            onClick={onAddBet}
-            className={[
-              'bet-reference-main-btn relative min-w-0 text-center transition',
-              showAddBetHint ? 'bet-reference-main-btn--summon' : '',
-              canAddBet ? 'active:scale-[0.99]' : 'cursor-not-allowed opacity-70',
-            ].join(' ')}
-          >
-            <img src={placeBetButtonImageSrc} alt="" aria-hidden="true" className="bet-reference-main-btn__bg" />
-            <span className="bet-reference-main-btn__label">{labels.placeBet}</span>
-            <span className="bet-reference-main-btn__value num-grobold">{addBetLabel}</span>
-          </button>
-
-          <div className="bet-reference-metric bet-reference-metric--dark min-w-0 text-center">
-            <p className="bet-reference-metric__label">{labels.payout}</p>
-            <p className="bet-reference-metric__value num-grobold">{formatNumber(potentialPayout, language)}</p>
-          </div>
-        </div>
-
-        <div className="bet-reference-chip-rail">
           <div className="bet-reference-carousel" role="group" aria-label={labels.chipsGroup}>
-            <button
-              type="button"
-              aria-label={labels.previousChip}
-              onClick={() => shiftChip(-1)}
-              disabled={disabled || chips.length === 0}
-              className={['bet-reference-nav', disabled ? 'cursor-not-allowed opacity-50' : 'active:scale-[0.96]'].join(' ')}
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M15 6L9 12L15 18" />
-              </svg>
-            </button>
-
             <div className="bet-reference-chip-row">
               {carouselOffsets.map((offset) => {
                 const chip = chips[getWrappedIndex(selectedChipIndex + offset, chips.length)] ?? selectedChip;
@@ -197,6 +226,7 @@ export const BetControls = ({
                     type="button"
                     disabled={disabled || chips.length === 0}
                     onClick={() => onSelectChip(chip)}
+                    style={getChipPalette(chip)}
                     className={[
                       'bet-reference-chip num-grobold rounded-full border transition',
                       sizeClass,
@@ -209,32 +239,23 @@ export const BetControls = ({
                     aria-current={isCenter ? 'true' : undefined}
                   >
                     <span className="bet-reference-chip__label">
-                      {isAllIn ? (
-                        <>
-                          <span>ALL</span>
-                          <span>IN</span>
-                        </>
-                      ) : (
-                        label
-                      )}
+                      {label}
                     </span>
                   </button>
                 );
               })}
             </div>
-
-            <button
-              type="button"
-              aria-label={labels.nextChip}
-              onClick={() => shiftChip(1)}
-              disabled={disabled || chips.length === 0}
-              className={['bet-reference-nav', disabled ? 'cursor-not-allowed opacity-50' : 'active:scale-[0.96]'].join(' ')}
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M9 6L15 12L9 18" />
-              </svg>
-            </button>
           </div>
+        </div>
+
+        <div className="bet-reference-loader" aria-hidden="true">
+          <span
+            className="bet-reference-loader__fill"
+            style={{
+              transform: `scaleX(${clampedBettingProgress})`,
+              opacity: clampedBettingProgress > 0 ? 1 : 0,
+            }}
+          />
         </div>
       </div>
     </section>

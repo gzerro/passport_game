@@ -56,6 +56,7 @@ const GameScreen = ({
   const {
     stage,
     secondsLeft,
+    bettingProgress,
     roundId,
     balance,
     history,
@@ -64,19 +65,17 @@ const GameScreen = ({
     selectedChip,
     potentialPayout,
     controlsDisabled,
-    canAddBet,
-    canResetBet,
     lastRoundReveal,
     selectSide,
+    clearSelectedSide,
     selectChip,
-    addBet,
-    resetBet,
     topUpBalance,
   } = useGameEngine();
 
   const [isTopUpOpen, setIsTopUpOpen] = useState<boolean>(false);
   const [currentObjectId, setCurrentObjectId] = useState<string>(pickRandomObjectId);
   const [showRoundTransitionFlash, setShowRoundTransitionFlash] = useState<boolean>(false);
+  const [showStartupGuideMan, setShowStartupGuideMan] = useState<boolean>(true);
 
   const objectRoundRef = useRef<number | null>(null);
   const previousStageRef = useRef<StageIndicator>(stage);
@@ -181,6 +180,13 @@ const GameScreen = ({
     [history, roundId, stage],
   );
   const sideLabels = sideLabelsByLanguage[language];
+  const handleSelectChip = (chip: typeof selectedChip): void => {
+    if (chip !== selectedChip) {
+      setShowStartupGuideMan(false);
+    }
+
+    selectChip(chip);
+  };
 
   return (
     <>
@@ -227,6 +233,7 @@ const GameScreen = ({
               currentBet={currentBet}
               language={language}
               hintsEnabled={hintsEnabled}
+              showGuideMan={showStartupGuideMan && selectedSide === null && stage === 'betting'}
               onHintsEnabledChange={onHintsEnabledChange}
             />
           </div>
@@ -236,15 +243,12 @@ const GameScreen = ({
           <BetControls
             chips={gameConfig.chips}
             selectedChip={selectedChip}
-            currentBet={currentBet}
-            potentialPayout={selectedSide ? potentialPayout : 0}
-            showAddBetHint={currentBet === 0 && canAddBet}
+            selectedSide={selectedSide}
+            potentialPayout={potentialPayout}
+            bettingProgress={bettingProgress}
             disabled={controlsDisabled}
-            canAddBet={canAddBet}
-            canResetBet={canResetBet}
-            onSelectChip={selectChip}
-            onAddBet={addBet}
-            onResetBet={resetBet}
+            onSelectChip={handleSelectChip}
+            onClearSelection={clearSelectedSide}
             language={language}
           />
         </footer>

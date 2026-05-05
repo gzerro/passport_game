@@ -16,6 +16,7 @@ interface AncientObjectStageProps {
   currentBet: number;
   language: Language;
   hintsEnabled: boolean;
+  showGuideMan: boolean;
   onHintsEnabledChange: (enabled: boolean) => void;
 }
 
@@ -32,8 +33,10 @@ const passportStampImageBySide: Record<BetSide, string> = {
 const guideManImageSrc = `${import.meta.env.BASE_URL}man.png`;
 const backImageSrc = `${import.meta.env.BASE_URL}back.png`;
 const tooltipImageSrc = `${import.meta.env.BASE_URL}tooltip.png`;
+const winImageSrc = `${import.meta.env.BASE_URL}win.png`;
 
 const ritualCastWispSlots = Array.from({ length: 4 }, (_, index) => index + 1);
+const resultConfettiSlots = Array.from({ length: 10 }, (_, index) => index + 1);
 const sideLabelByLanguage: Record<Language, Record<BetSide, string>> = {
   ru: {
     yes: 'Одобрить',
@@ -542,6 +545,7 @@ export const AncientObjectStage = ({
   currentBet,
   language,
   hintsEnabled,
+  showGuideMan,
   onHintsEnabledChange,
 }: AncientObjectStageProps) => {
   const [objectImageFailed, setObjectImageFailed] = useState<boolean>(false);
@@ -567,10 +571,10 @@ export const AncientObjectStage = ({
   const hasPreparedBet = currentBet > 0;
   const isChoiceScene = stage === 'betting' || stage === 'resolving';
   const hasSettledBetResult = stage === 'finished' && hasPreparedBet && selectedSide !== null && currentRoundResult !== null;
-  const isResultScene = stage === 'finished' && (currentRoundEntry !== null || hasSettledBetResult);
+  const hasFinishedDecisionResult = currentRoundEntry !== null || hasSettledBetResult;
+  const isResultScene = stage === 'finished';
   const isPassportControlScene = isChoiceScene || isResultScene;
-  const showGuideMan =
-    hintsEnabled && !hasPreparedBet && (stage === 'betting' || stage === 'resolving' || (stage === 'finished' && currentRoundEntry === null));
+  const shouldShowGuideMan = hintsEnabled && showGuideMan;
   const isChoiceSelectionDisabled = disabled || !hasPreparedBet;
   const shouldPulseChoiceButtons = isChoiceScene && !isChoiceSelectionDisabled && selectedSide === null;
   const choiceWalkClass = stage === 'resolving' && selectedSide !== null ? `ancient-object__choice-person--walk-${selectedSide}` : '';
@@ -583,7 +587,9 @@ export const AncientObjectStage = ({
     [guideManSpeechVariants, roundId],
   );
   const passportProfile = useMemo(() => buildPassportProfile(roundId, objectId, language), [language, objectId, roundId]);
-  const visiblePassportStampSide = isResultScene ? (currentRoundEntry?.selectedSide ?? selectedSide) : selectedSide;
+  const visiblePassportStampSide = isResultScene
+    ? (hasFinishedDecisionResult ? (currentRoundEntry?.selectedSide ?? selectedSide) : null)
+    : selectedSide;
   const fallbackResultBalanceDelta =
     hasSettledBetResult && selectedSide !== null && currentRoundResult !== null
       ? selectedSide === currentRoundResult
@@ -600,6 +606,8 @@ export const AncientObjectStage = ({
     () => buildOutcomeReasonProfile(roundId, currentRoundEntry?.selectedSide ?? selectedSide, currentRoundResult, language),
     [currentRoundEntry?.selectedSide, currentRoundResult, language, roundId, selectedSide],
   );
+  const shouldShowPassiveChoiceButtons = !isChoiceScene && outcomeReasonProfile === null;
+  const shouldShowWinConfetti = hasFinishedDecisionResult && resultBalanceDelta > 0;
   const resultTone = outcomeReasonProfile?.tone ?? (resultBalanceDelta >= 0 ? 'good' : 'bad');
 
   return (
@@ -614,6 +622,24 @@ export const AncientObjectStage = ({
         ].join(' ')}
       >
         <div className="ancient-object__grain" aria-hidden="true" />
+        {shouldShowWinConfetti ? (
+          <>
+            <div className="ancient-object__win-celebration" aria-hidden="true">
+              <span className="ancient-object__win-glow" />
+              <span className="ancient-object__win-backlight" />
+              <img src={winImageSrc} alt="" className="ancient-object__win-coins" />
+            </div>
+            <div className="ancient-object__result-confetti" aria-hidden="true">
+              {resultConfettiSlots.map((slot) => (
+                <span key={`result-confetti-${slot}`} className={`ancient-object__result-confetti-piece ancient-object__result-confetti-piece--${slot}`} />
+              ))}
+              <span className="ancient-object__win-burst ancient-object__win-burst--1" />
+              <span className="ancient-object__win-burst ancient-object__win-burst--2" />
+              <span className="ancient-object__win-burst ancient-object__win-burst--3" />
+              <span className="ancient-object__win-burst ancient-object__win-burst--4" />
+            </div>
+          </>
+        ) : null}
 
         {isPassportControlScene ? (
           <div className="ancient-object__choice-layout">
@@ -630,21 +656,21 @@ export const AncientObjectStage = ({
                 ) : (
                   <div className="ancient-object__fallback ancient-object__choice-fallback">{sceneLabels.person}</div>
                 )}
-                {isResultScene ? (
-                  <p className={['ancient-object__result-amount num-grobold', `ancient-object__result-amount--${resultTone}`].join(' ')}>
-                    {resultAmountLabel}
-                  </p>
-                ) : null}
               </div>
               <div className="ancient-object__choice-glass" aria-hidden="true" />
             </div>
 
             <div className="ancient-object__choice-controls">
-              {isChoiceScene ? (
+              {isChoiceScene || shouldShowPassiveChoiceButtons ? (
                 <div
-                  className={['ancient-object__choice-buttons', shouldPulseChoiceButtons ? 'ancient-object__choice-buttons--attention' : ''].join(' ')}
+                  className={[
+                    'ancient-object__choice-buttons',
+                    shouldPulseChoiceButtons ? 'ancient-object__choice-buttons--attention' : '',
+                    shouldShowPassiveChoiceButtons ? 'ancient-object__choice-buttons--ghosted' : '',
+                  ].join(' ')}
                   role="group"
                   aria-label={sceneLabels.decisionGroup}
+                  aria-hidden={shouldShowPassiveChoiceButtons ? 'true' : undefined}
                 >
                   {(['yes', 'no'] as const).map((sideId) => (
                     <div key={sideId} className="ancient-object__choice-option">
@@ -709,6 +735,14 @@ export const AncientObjectStage = ({
               {visiblePassportStampSide !== null ? (
                 <div className={['ancient-object__passport-stamp', `ancient-object__passport-stamp--${visiblePassportStampSide}`].join(' ')} aria-hidden="true">
                   <img src={passportStampImageBySide[visiblePassportStampSide]} alt="" className="ancient-object__passport-stamp-image" />
+                </div>
+              ) : null}
+
+              {hasFinishedDecisionResult ? (
+                <div className={['ancient-object__passport-result-overlay', `ancient-object__passport-result-overlay--${resultTone}`].join(' ')} aria-hidden="true">
+                  <p className={['ancient-object__result-amount num-grobold', `ancient-object__result-amount--${resultTone}`].join(' ')}>
+                    {resultAmountLabel}
+                  </p>
                 </div>
               ) : null}
             </article>
@@ -783,7 +817,7 @@ export const AncientObjectStage = ({
         ) : null}
       </div>
 
-      {showGuideMan ? (
+      {shouldShowGuideMan ? (
         <>
           <div className="ancient-object__guide-backdrop" aria-hidden="true" />
           <div className="ancient-object__guide-man-speech" aria-hidden="true">

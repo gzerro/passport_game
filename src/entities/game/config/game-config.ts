@@ -11,14 +11,14 @@ export const gameConfig: GameConfig = {
   },
   phases: {
     bettingDurationSec: 20,
-    resolvingDurationSec: 3,
-    finishedIndicatorDurationMs: 1000,
+    resolvingDurationSec: 2,
+    finishedIndicatorDurationMs: 3000,
   },
   defaults: {
     startingBalance: 1_000_000,
     defaultChip: 100,
   },
-  chips: [100, 500, 1000, 5000, 10000, 50000, 'all_in', 150000],
+  chips: ['all_in', 50, 100, 500, 1000, 5000, 10000, 50000, 100000],
   history: {
     maxEntries: 20,
   },
