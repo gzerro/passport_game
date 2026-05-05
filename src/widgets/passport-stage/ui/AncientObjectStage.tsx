@@ -33,7 +33,6 @@ const passportStampImageBySide: Record<BetSide, string> = {
 const guideManImageSrc = `${import.meta.env.BASE_URL}man.png`;
 const backImageSrc = `${import.meta.env.BASE_URL}back.png`;
 const tooltipImageSrc = `${import.meta.env.BASE_URL}tooltip.png`;
-const winImageSrc = `${import.meta.env.BASE_URL}win.png`;
 
 const ritualCastWispSlots = Array.from({ length: 4 }, (_, index) => index + 1);
 const resultConfettiSlots = Array.from({ length: 10 }, (_, index) => index + 1);
@@ -160,6 +159,26 @@ const passportCitiesByLanguage: Record<Language, readonly string[]> = {
     'София',
     'Ереван',
     'Кутаиси',
+    'Токио',
+    'Сеул',
+    'Сингапур',
+    'Стамбул',
+    'Кейптаун',
+    'Найроби',
+    'Касабланка',
+    'Мехико',
+    'Рио-де-Жанейро',
+    'Буэнос-Айрес',
+    'Сантьяго',
+    'Торонто',
+    'Сидней',
+    'Окленд',
+    'Рейкьявик',
+    'Лиссабон',
+    'Мадрид',
+    'Прага',
+    'Амстердам',
+    'Дубай',
   ],
   en: [
     'Bangladesh',
@@ -172,6 +191,26 @@ const passportCitiesByLanguage: Record<Language, readonly string[]> = {
     'Sofia',
     'Yerevan',
     'Kutaisi',
+    'Tokyo',
+    'Seoul',
+    'Singapore',
+    'Istanbul',
+    'Cape Town',
+    'Nairobi',
+    'Casablanca',
+    'Mexico City',
+    'Rio de Janeiro',
+    'Buenos Aires',
+    'Santiago',
+    'Toronto',
+    'Sydney',
+    'Auckland',
+    'Reykjavik',
+    'Lisbon',
+    'Madrid',
+    'Prague',
+    'Amsterdam',
+    'Dubai',
   ],
 };
 
@@ -557,6 +596,7 @@ export const AncientObjectStage = ({
   const closedImageSrc = `${import.meta.env.BASE_URL}object/${objectId}/1.png`;
   const blessedImageSrc = `${import.meta.env.BASE_URL}object/${objectId}/2.png`;
   const cursedImageSrc = `${import.meta.env.BASE_URL}object/${objectId}/3.png`;
+  const passportImageSrc = closedImageSrc;
   const isFinished = stage === 'finished';
   const imageSrc = !isFinished
     ? closedImageSrc
@@ -577,8 +617,10 @@ export const AncientObjectStage = ({
   const shouldShowGuideMan = hintsEnabled && showGuideMan;
   const isChoiceSelectionDisabled = disabled || !hasPreparedBet;
   const shouldPulseChoiceButtons = isChoiceScene && !isChoiceSelectionDisabled && selectedSide === null;
-  const choiceWalkClass = stage === 'resolving' && selectedSide !== null ? `ancient-object__choice-person--walk-${selectedSide}` : '';
-  const showRitualCast = stage === 'resolving' && selectedSide !== null;
+  const activeWalkSide = stage === 'resolving' && selectedSide !== null ? selectedSide : null;
+  const choiceWalkClass = activeWalkSide ? `ancient-object__choice-person--walk-${activeWalkSide}` : '';
+  const showRitualCast = activeWalkSide !== null;
+  const choicePersonKey = `${roundId}-${objectId}-${stage}-${activeWalkSide ?? 'idle'}`;
   const sceneLabels = sceneLabelsByLanguage[language];
   const sideLabels = sideLabelByLanguage[language];
   const guideManSpeechVariants = guideManSpeechVariantsByLanguage[language];
@@ -624,11 +666,6 @@ export const AncientObjectStage = ({
         <div className="ancient-object__grain" aria-hidden="true" />
         {shouldShowWinConfetti ? (
           <>
-            <div className="ancient-object__win-celebration" aria-hidden="true">
-              <span className="ancient-object__win-glow" />
-              <span className="ancient-object__win-backlight" />
-              <img src={winImageSrc} alt="" className="ancient-object__win-coins" />
-            </div>
             <div className="ancient-object__result-confetti" aria-hidden="true">
               {resultConfettiSlots.map((slot) => (
                 <span key={`result-confetti-${slot}`} className={`ancient-object__result-confetti-piece ancient-object__result-confetti-piece--${slot}`} />
@@ -648,6 +685,7 @@ export const AncientObjectStage = ({
                 <img src={backImageSrc} alt="" aria-hidden="true" className="ancient-object__choice-back" />
                 {!objectImageFailed ? (
                   <img
+                    key={choicePersonKey}
                     src={imageSrc}
                     alt={sceneLabels.checkedPerson}
                     className={['ancient-object__choice-person', choiceWalkClass].join(' ')}
@@ -661,63 +699,65 @@ export const AncientObjectStage = ({
             </div>
 
             <div className="ancient-object__choice-controls">
-              {isChoiceScene || shouldShowPassiveChoiceButtons ? (
-                <div
-                  className={[
-                    'ancient-object__choice-buttons',
-                    shouldPulseChoiceButtons ? 'ancient-object__choice-buttons--attention' : '',
-                    shouldShowPassiveChoiceButtons ? 'ancient-object__choice-buttons--ghosted' : '',
-                  ].join(' ')}
-                  role="group"
-                  aria-label={sceneLabels.decisionGroup}
-                  aria-hidden={shouldShowPassiveChoiceButtons ? 'true' : undefined}
-                >
-                  {(['yes', 'no'] as const).map((sideId) => (
-                    <div key={sideId} className="ancient-object__choice-option">
-                      <button
-                        type="button"
-                        disabled={isChoiceSelectionDisabled}
-                        onClick={() => onSelect(sideId)}
-                        aria-label={sideId === 'yes' ? sceneLabels.approve : sceneLabels.deny}
-                        className={[
-                          'ancient-object__choice-btn',
-                          selectedSide === sideId ? 'ancient-object__choice-btn--selected' : '',
-                          isChoiceSelectionDisabled ? 'ancient-object__choice-btn--inactive cursor-not-allowed' : 'active:scale-[0.98]',
-                        ].join(' ')}
-                      >
-                        {!sideImageFailed[sideId] ? (
-                          <img
-                            src={sideImageById[sideId]}
-                            alt={sideId === 'yes' ? sceneLabels.approve : sceneLabels.deny}
-                            className="ancient-object__choice-btn-image"
-                            onError={() => setSideImageFailed((prev) => ({ ...prev, [sideId]: true }))}
-                          />
-                        ) : (
-                          <span className="ancient-object__choice-btn-fallback">{sideId === 'yes' ? sceneLabels.approve.toUpperCase() : sceneLabels.deny.toUpperCase()}</span>
-                        )}
-                      </button>
-                      <p className="ancient-object__choice-coefs num-grobold">x{formatCoefficient(coefficients[sideId], language)}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : outcomeReasonProfile ? (
-                <div className={['ancient-object__result-panel', `ancient-object__result-panel--${resultTone}`].join(' ')}>
-                  <p className="ancient-object__result-panel-text">{outcomeReasonProfile.text}</p>
-                  <div className="ancient-object__result-panel-impact">
-                    <span className="ancient-object__result-panel-impact-label">{outcomeReasonProfile.impactLabel}</span>
-                    <span className={['ancient-object__result-panel-impact-value num-grobold', `ancient-object__result-panel-impact-value--${resultTone}`].join(' ')}>
-                      {outcomeReasonProfile.impactAmount >= 0 ? '+' : ''}
-                      {formatNumber(outcomeReasonProfile.impactAmount, language)}
-                    </span>
+              <div className="ancient-object__choice-controls-slot">
+                {isChoiceScene || shouldShowPassiveChoiceButtons ? (
+                  <div
+                    className={[
+                      'ancient-object__choice-buttons',
+                      shouldPulseChoiceButtons ? 'ancient-object__choice-buttons--attention' : '',
+                      shouldShowPassiveChoiceButtons ? 'ancient-object__choice-buttons--ghosted' : '',
+                    ].join(' ')}
+                    role="group"
+                    aria-label={sceneLabels.decisionGroup}
+                    aria-hidden={shouldShowPassiveChoiceButtons ? 'true' : undefined}
+                  >
+                    {(['yes', 'no'] as const).map((sideId) => (
+                      <div key={sideId} className="ancient-object__choice-option">
+                        <button
+                          type="button"
+                          disabled={isChoiceSelectionDisabled}
+                          onClick={() => onSelect(sideId)}
+                          aria-label={sideId === 'yes' ? sceneLabels.approve : sceneLabels.deny}
+                          className={[
+                            'ancient-object__choice-btn',
+                            selectedSide === sideId ? 'ancient-object__choice-btn--selected' : '',
+                            isChoiceSelectionDisabled ? 'ancient-object__choice-btn--inactive cursor-not-allowed' : 'active:scale-[0.98]',
+                          ].join(' ')}
+                        >
+                          {!sideImageFailed[sideId] ? (
+                            <img
+                              src={sideImageById[sideId]}
+                              alt={sideId === 'yes' ? sceneLabels.approve : sceneLabels.deny}
+                              className="ancient-object__choice-btn-image"
+                              onError={() => setSideImageFailed((prev) => ({ ...prev, [sideId]: true }))}
+                            />
+                          ) : (
+                            <span className="ancient-object__choice-btn-fallback">{sideId === 'yes' ? sceneLabels.approve.toUpperCase() : sceneLabels.deny.toUpperCase()}</span>
+                          )}
+                        </button>
+                        <p className="ancient-object__choice-coefs num-grobold">x{formatCoefficient(coefficients[sideId], language)}</p>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ) : null}
+                ) : outcomeReasonProfile ? (
+                  <div className={['ancient-object__result-panel', `ancient-object__result-panel--${resultTone}`].join(' ')}>
+                    <p className="ancient-object__result-panel-text">{outcomeReasonProfile.text}</p>
+                    <div className="ancient-object__result-panel-impact">
+                      <span className="ancient-object__result-panel-impact-label">{outcomeReasonProfile.impactLabel}</span>
+                      <span className={['ancient-object__result-panel-impact-value num-grobold', `ancient-object__result-panel-impact-value--${resultTone}`].join(' ')}>
+                        {outcomeReasonProfile.impactAmount >= 0 ? '+' : ''}
+                        {formatNumber(outcomeReasonProfile.impactAmount, language)}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
 
             <article className="ancient-object__passport" aria-label={sceneLabels.passport}>
               <div className="ancient-object__passport-photo">
                 {!objectImageFailed ? (
-                  <img src={imageSrc} alt="" aria-hidden="true" className="ancient-object__passport-photo-image" />
+                  <img src={passportImageSrc} alt="" aria-hidden="true" className="ancient-object__passport-photo-image" />
                 ) : (
                   <div className="ancient-object__passport-photo-fallback">{sceneLabels.photo}</div>
                 )}
