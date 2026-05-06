@@ -69,6 +69,111 @@ function verifyCdpTrapApisOriginal(): boolean {
 }
 
 const BLOCK_OVERLAY_ID = 'passport-game-devtools-block';
+const FOREGROUND_RESUME_GRACE_MS = 2500;
+const PERIODIC_TRAPS_INTERVAL_MS = 1800;
+
+let lifecycleGuardsInstalled = false;
+let lastResumeFromBackgroundAt = 0;
+let hasBeenBackgrounded = false;
+let periodicTrapsIntervalId: number | undefined;
+
+function markResumeFromBackgroundNow(): void {
+  lastResumeFromBackgroundAt = Date.now();
+}
+
+function installLifecycleGuards(): void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+  if (lifecycleGuardsInstalled) {
+    return;
+  }
+  lifecycleGuardsInstalled = true;
+
+  window.addEventListener('focus', () => {
+    if (hasBeenBackgrounded) {
+      markResumeFromBackgroundNow();
+    }
+  });
+  window.addEventListener(
+    'pageshow',
+    () => {
+      if (hasBeenBackgrounded) {
+        markResumeFromBackgroundNow();
+      }
+    },
+    { passive: true }
+  );
+  window.addEventListener(
+    'pagehide',
+    () => {
+      hasBeenBackgrounded = true;
+    },
+    { passive: true }
+  );
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.visibilityState === 'hidden') {
+        hasBeenBackgrounded = true;
+        return;
+      }
+      if (hasBeenBackgrounded) {
+        markResumeFromBackgroundNow();
+      }
+    },
+    { passive: true }
+  );
+}
+
+function shouldIgnoreDetectionInBackgroundCycle(): boolean {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+  if (document.visibilityState !== 'visible') {
+    return true;
+  }
+  if (lastResumeFromBackgroundAt === 0) {
+    return false;
+  }
+  return Date.now() - lastResumeFromBackgroundAt < FOREGROUND_RESUME_GRACE_MS;
+}
+
+function runPeriodicTraps(notify: () => void): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  if (document.visibilityState !== 'visible') {
+    return;
+  }
+  runCdpTrap1(notify);
+  runCdpTrap2(notify);
+  runCdpTrapRegexpToString(notify);
+}
+
+function ensurePeriodicTrapChecks(notify: () => void): void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+  if (periodicTrapsIntervalId !== undefined) {
+    return;
+  }
+
+  // Перепроверяем ловушки периодически, чтобы детект срабатывал при открытии DevTools уже после загрузки.
+  periodicTrapsIntervalId = window.setInterval(() => {
+    runPeriodicTraps(notify);
+  }, PERIODIC_TRAPS_INTERVAL_MS);
+
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.visibilityState === 'visible') {
+        runPeriodicTraps(notify);
+      }
+    },
+    { passive: true }
+  );
+}
 
 /** DevTools часто дополнительно читает свойства логируемого объекта уже после текущего тика — нужны отложенные проверки */
 const DEFER_TRAP1_DELAYS_MS = [0, 50, 120, 350, 800] as const;
@@ -144,7 +249,7 @@ export function runCdpTrap1(onDetected?: OnCdpDetected): void {
     enumerable: true,
   });
 
-  console.log(trapObject);
+  console.debug(trapObject);
 
   const maybeDetect = (): void => {
     if (accessCount > 1) {
@@ -199,7 +304,7 @@ export function runCdpTrapRegexpToString(onDetected?: OnCdpDetected): void {
     return 'any';
   };
 
-  console.log(trapObject);
+  console.debug(trapObject);
 
   const maybeDetect = (): void => {
     if (accessCount > 1) {
@@ -298,7 +403,12 @@ function finishDebuggerWorkerSetup(worker: Worker, url: string, onDetected?: OnC
 }
 
 export function installCdpTraps(onDetected?: OnCdpDetected): void {
+  installLifecycleGuards();
+
   const notify = (): void => {
+    if (shouldIgnoreDetectionInBackgroundCycle()) {
+      return;
+    }
     onDetected?.();
   };
 
@@ -311,4 +421,5 @@ export function installCdpTraps(onDetected?: OnCdpDetected): void {
   runCdpTrap2(notify);
   runCdpTrapRegexpToString(notify);
   runAdvancedDebuggerCheck(notify);
+  ensurePeriodicTrapChecks(notify);
 }
