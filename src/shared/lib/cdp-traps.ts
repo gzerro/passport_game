@@ -186,6 +186,41 @@ function scheduleDeferredChecks(callback: () => void): void {
   }
 }
 
+function removeApplicationDomForBlockScreen(): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  const appRootSelectors = ['#root', '#app', '#__next'];
+  let removedRootsCount = 0;
+
+  for (const selector of appRootSelectors) {
+    const node = document.querySelector<HTMLElement>(selector);
+    if (!node) {
+      continue;
+    }
+    node.remove();
+    removedRootsCount += 1;
+  }
+
+  // Fallback для нестандартной разметки: удаляем все визуальные узлы из body.
+  if (removedRootsCount === 0 && document.body) {
+    for (const child of Array.from(document.body.children)) {
+      if (!(child instanceof HTMLElement)) {
+        continue;
+      }
+      const tagName = child.tagName.toLowerCase();
+      if (tagName === 'script' || tagName === 'style' || tagName === 'link') {
+        continue;
+      }
+      if (child.id === BLOCK_OVERLAY_ID) {
+        continue;
+      }
+      child.remove();
+    }
+  }
+}
+
 /** Полноэкранная блокировка: вызывается при срабатывании ловушек DevTools/CDP */
 export function mountDevToolsBlockOverlay(): void {
   if (typeof document === 'undefined') {
@@ -195,6 +230,8 @@ export function mountDevToolsBlockOverlay(): void {
   if (document.getElementById(BLOCK_OVERLAY_ID)) {
     return;
   }
+
+  removeApplicationDomForBlockScreen();
 
   document.documentElement.style.overflow = 'hidden';
   document.body.style.overflow = 'hidden';
@@ -210,8 +247,8 @@ export function mountDevToolsBlockOverlay(): void {
     zIndex: '2147483647',
     boxSizing: 'border-box',
     margin: '0',
-    background: '#000000',
-    color: '#f5f5f5',
+    background: 'radial-gradient(circle at 50% 0%, #1f2937 0%, #05070b 60%)',
+    color: '#f8fafc',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -226,13 +263,40 @@ export function mountDevToolsBlockOverlay(): void {
     WebkitUserSelect: 'none',
   } as CSSStyleDeclaration & { WebkitUserSelect?: string });
 
+  const card = document.createElement('div');
+  Object.assign(card.style, {
+    width: 'min(92vw, 480px)',
+    borderRadius: '20px',
+    border: '1px solid rgba(148, 163, 184, 0.22)',
+    background: 'rgba(15, 23, 42, 0.78)',
+    boxShadow: '0 20px 80px rgba(0, 0, 0, 0.55)',
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
+    padding: '28px 24px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '14px',
+  } as CSSStyleDeclaration & { WebkitBackdropFilter?: string });
+
+  const warningIcon = document.createElement('div');
+  warningIcon.textContent = '⚠️';
+  Object.assign(warningIcon.style, {
+    fontSize: '56px',
+    lineHeight: '1',
+  } as CSSStyleDeclaration);
+
   const message = document.createElement('p');
   message.style.maxWidth = '28rem';
   message.style.margin = '0';
-  message.textContent =
-    'Для продолжения закройте панель инструментов разработчика (DevTools): нажмите F12 или сочетание Cmd+Option+I (Mac) / Ctrl+Shift+I (Windows) ещё раз, чтобы её скрыть.';
+  message.style.fontSize = '20px';
+  message.style.fontWeight = '600';
+  message.style.letterSpacing = '0.01em';
+  message.textContent = 'Для продолжения работы закройте консоль разработчика.';
 
-  layer.appendChild(message);
+  card.appendChild(warningIcon);
+  card.appendChild(message);
+  layer.appendChild(card);
   document.body.appendChild(layer);
 }
 
