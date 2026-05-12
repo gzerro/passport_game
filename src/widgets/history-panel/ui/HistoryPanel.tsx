@@ -95,7 +95,7 @@ export const HistoryPanel = ({
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
   const labels = labelsByLanguage[language];
 
-  const previewEntries = useMemo(() => entries.slice(0, 6), [entries]);
+  const previewEntries = useMemo(() => entries.slice(0, 12), [entries]);
 
   return (
     <div className="top-history-strip">

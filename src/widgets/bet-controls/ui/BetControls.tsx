@@ -180,6 +180,35 @@ export const BetControls = ({
   const carouselOffsets = [-2, -1, 0, 1, 2];
   const showCancelSelection = selectedSide !== null && !disabled;
   const clampedBettingProgress = Math.min(1, Math.max(0, bettingProgress));
+  const renderChipButton = (chip: ChipValue, key: string, className: string, isSelected: boolean) => {
+    const label = formatCompactChipValue(chip, language);
+    const isAllIn = chip === 'all_in';
+    const isLongLabel = !isAllIn && label.length >= 4;
+
+    return (
+      <button
+        key={key}
+        type="button"
+        disabled={disabled || chips.length === 0}
+        onClick={() => onSelectChip(chip)}
+        style={getChipPalette(chip)}
+        className={[
+          'bet-reference-chip num-grobold rounded-full border transition',
+          className,
+          isAllIn ? 'bet-reference-chip--all-in' : '',
+          isLongLabel ? 'bet-reference-chip--long-label' : '',
+          isSelected ? 'bet-reference-chip--selected border-[#f2c86e] text-[#2c1d09]' : 'border-[#b08a4fdd] text-[#3a240d]',
+          disabled ? 'cursor-not-allowed opacity-60' : 'active:scale-[0.97]',
+        ].join(' ')}
+        aria-label={labels.chipAria(label)}
+        aria-current={isSelected ? 'true' : undefined}
+      >
+        <span className="bet-reference-chip__label">
+          {label}
+        </span>
+      </button>
+    );
+  };
 
   return (
     <section className="bet-controls">
@@ -210,40 +239,26 @@ export const BetControls = ({
           </div>
 
           <div className="bet-reference-carousel" role="group" aria-label={labels.chipsGroup}>
-            <div className="bet-reference-chip-row">
+            <div className="bet-reference-chip-row bet-reference-chip-row--carousel">
               {carouselOffsets.map((offset) => {
                 const chip = chips[getWrappedIndex(selectedChipIndex + offset, chips.length)] ?? selectedChip;
-                const label = formatCompactChipValue(chip, language);
                 const distance = Math.abs(offset);
                 const sizeClass = distance === 0 ? 'bet-reference-chip--center' : distance === 1 ? 'bet-reference-chip--near' : 'bet-reference-chip--far';
                 const isCenter = distance === 0;
-                const isAllIn = chip === 'all_in';
-                const isLongLabel = !isAllIn && label.length >= 4;
 
-                return (
-                  <button
-                    key={`${chip}-${offset}`}
-                    type="button"
-                    disabled={disabled || chips.length === 0}
-                    onClick={() => onSelectChip(chip)}
-                    style={getChipPalette(chip)}
-                    className={[
-                      'bet-reference-chip num-grobold rounded-full border transition',
-                      sizeClass,
-                      isAllIn ? 'bet-reference-chip--all-in' : '',
-                      isLongLabel ? 'bet-reference-chip--long-label' : '',
-                      isCenter ? 'bet-reference-chip--selected border-[#f2c86e] text-[#2c1d09]' : 'border-[#b08a4fdd] text-[#3a240d]',
-                      disabled ? 'cursor-not-allowed opacity-60' : 'active:scale-[0.97]',
-                    ].join(' ')}
-                    aria-label={labels.chipAria(label)}
-                    aria-current={isCenter ? 'true' : undefined}
-                  >
-                    <span className="bet-reference-chip__label">
-                      {label}
-                    </span>
-                  </button>
-                );
+                return renderChipButton(chip, `${chip}-${offset}`, sizeClass, isCenter);
               })}
+            </div>
+
+            <div className="bet-reference-chip-grid">
+              {chips.map((chip) => (
+                renderChipButton(
+                  chip,
+                  `desktop-${chip}`,
+                  'bet-reference-chip--desktop',
+                  chip === selectedChip,
+                )
+              ))}
             </div>
           </div>
         </div>
