@@ -6,7 +6,7 @@ COPY package.json bun.lock* package-lock.json* ./
 RUN bun install --no-cache --frozen-lockfile
 COPY . .
 
-ARG VITE_PROVIDER_API_BASE_URL=http://localhost:3001
+ARG VITE_PROVIDER_API_BASE_URL=http://localhost:3010
 ENV VITE_PROVIDER_API_BASE_URL=${VITE_PROVIDER_API_BASE_URL}
 
 RUN bun run build
