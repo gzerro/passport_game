@@ -17,6 +17,7 @@ interface HistoryPanelProps {
 
 const infoButtonSrc = `${import.meta.env.BASE_URL}info.svg`;
 const coinImageSrc = `${import.meta.env.BASE_URL}coin.png`;
+const allGamesUrl = 'https://vinwingame.space/';
 
 const labelsByLanguage: Record<
   Language,
@@ -38,13 +39,15 @@ const labelsByLanguage: Record<
     hints: string;
     hintsOn: string;
     hintsOff: string;
+    allGames: string;
+    historyFeed: string;
   }
 > = {
   ru: {
-    openHistory: 'Открыть хронику и язык',
+    openHistory: 'Открыть меню',
     noHistory: 'Нет истории',
     balance: 'Баланс',
-    historyTitle: 'Хроника раундов',
+    historyTitle: 'Меню',
     close: 'Закрыть',
     empty: 'Пока пусто',
     round: 'Раунд',
@@ -58,12 +61,14 @@ const labelsByLanguage: Record<
     hints: 'Подсказки',
     hintsOn: 'Вкл',
     hintsOff: 'Выкл',
+    allGames: 'Все игры',
+    historyFeed: 'Последние раунды',
   },
   en: {
-    openHistory: 'Open history and language',
+    openHistory: 'Open menu',
     noHistory: 'No history',
     balance: 'Balance',
-    historyTitle: 'Round History',
+    historyTitle: 'Menu',
     close: 'Close',
     empty: 'Nothing here yet',
     round: 'Round',
@@ -77,6 +82,8 @@ const labelsByLanguage: Record<
     hints: 'Hints',
     hintsOn: 'On',
     hintsOff: 'Off',
+    allGames: 'All games',
+    historyFeed: 'Recent rounds',
   },
 };
 
@@ -96,6 +103,13 @@ export const HistoryPanel = ({
   const labels = labelsByLanguage[language];
 
   const previewEntries = useMemo(() => entries.slice(0, 12), [entries]);
+  const openAllGames = (): void => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.location.assign(allGamesUrl);
+  };
 
   return (
     <div className="top-history-strip">
@@ -155,127 +169,151 @@ export const HistoryPanel = ({
 
       {isHistoryOpen ? (
         <div
-          className="fixed inset-0 z-[60] flex items-end bg-[#050402bf] p-3 sm:items-center sm:justify-center"
+          className="settings-menu__overlay"
           onClick={() => setIsHistoryOpen(false)}
         >
           <div
-            className="w-full max-w-sm rounded-3xl border border-[#bc986277] bg-[#1e160df4] p-4 text-[#e8d8af] shadow-2xl"
+            className="settings-menu__card"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="ritual-title text-sm text-[#f6e4b9]">{labels.historyTitle}</h3>
+            <div className="settings-menu__rail" aria-hidden="true" />
+
+            <div className="settings-menu__content">
+              <div className="settings-menu__header">
+                <h3 className="ritual-title settings-menu__title">{labels.historyTitle}</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryOpen(false)}
+                  className="settings-menu__close"
+                >
+                  {labels.close}
+                </button>
+              </div>
+
               <button
                 type="button"
-                onClick={() => setIsHistoryOpen(false)}
-                className="rounded-full border border-[#b6935d75] px-2.5 py-1 text-xs text-[#d0bb8d]"
+                onClick={openAllGames}
+                className="settings-menu__games-button"
               >
-                {labels.close}
+                <span className="settings-menu__games-button-copy num-grobold">{labels.allGames}</span>
               </button>
-            </div>
 
-            <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-[#b9955f55] bg-[#2b1f13d8] px-3 py-2">
-              <span className="text-[11px] uppercase tracking-[0.12em] text-[#d7bf8f]">{labels.language}</span>
-              <div className="inline-flex rounded-full border border-[#b6935d70] bg-[#1a140df0] p-1">
-                {(['ru', 'en'] as const).map((languageOption) => (
+              <div className="settings-menu__section">
+                <div className="settings-menu__section-head">
+                  <span className="settings-menu__section-label">{labels.language}</span>
+                  <div className="settings-menu__segmented">
+                    {(['ru', 'en'] as const).map((languageOption) => (
+                      <button
+                        key={languageOption}
+                        type="button"
+                        onClick={() => onLanguageChange(languageOption)}
+                        className={[
+                          'settings-menu__segment',
+                          language === languageOption ? 'settings-menu__segment--active' : '',
+                        ].join(' ')}
+                      >
+                        {languageOption.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="settings-menu__section">
+                <div className="settings-menu__section-head">
+                  <span className="settings-menu__section-label">{labels.hints}</span>
                   <button
-                    key={languageOption}
                     type="button"
-                    onClick={() => onLanguageChange(languageOption)}
-                    className={[
-                      'min-w-[44px] rounded-full px-3 py-1 text-[11px] font-semibold transition',
-                      language === languageOption
-                        ? 'bg-[linear-gradient(180deg,#f0cc76_0%,#c9923f_100%)] text-[#321f09]'
-                        : 'text-[#d0bb8d]',
-                    ].join(' ')}
+                    role="switch"
+                    aria-checked={hintsEnabled}
+                    onClick={() => onHintsEnabledChange(!hintsEnabled)}
+                    className={['settings-switch', hintsEnabled ? 'settings-switch--on' : ''].join(' ')}
                   >
-                    {languageOption.toUpperCase()}
+                    <span className="settings-switch__track" aria-hidden="true">
+                      <span className="settings-switch__thumb" />
+                    </span>
+                    <span className="settings-switch__label">{hintsEnabled ? labels.hintsOn : labels.hintsOff}</span>
                   </button>
-                ))}
+                </div>
+              </div>
+
+              <div className="settings-menu__section settings-menu__section--history">
+                <div className="settings-menu__section-head">
+                  <span className="settings-menu__section-label">{labels.historyFeed}</span>
+                </div>
+
+                {entries.length === 0 ? (
+                  <div className="settings-menu__empty">{labels.empty}</div>
+                ) : (
+                  <ul className="settings-menu__history-list no-scrollbar">
+                    {entries.map((entry) => (
+                      <li key={`history-${entry.id}`}>
+                        <button
+                          type="button"
+                          onClick={() => setModalEntry(entry)}
+                          className="settings-menu__history-item"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="num-grobold text-[11px] font-semibold text-[#eef6ff]">#{entry.roundId}</span>
+                            <span className="num-grobold text-[10px] text-[#8ea2bc]">{formatClockTime(entry.timestamp, language)}</span>
+                          </div>
+                          <div className="mt-1 flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-[#b9c9dc]">{sideLabels[entry.selectedSide]}</span>
+                            <span className={entry.balanceDelta >= 0 ? 'num-grobold text-[#89e4bf]' : 'num-grobold text-[#ff9da9]'}>
+                              {entry.balanceDelta >= 0 ? '+' : ''}
+                              {formatNumber(entry.balanceDelta, language)}
+                            </span>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
-
-            <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-[#b9955f55] bg-[#2b1f13d8] px-3 py-2">
-              <span className="text-[11px] uppercase tracking-[0.12em] text-[#d7bf8f]">{labels.hints}</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={hintsEnabled}
-                onClick={() => onHintsEnabledChange(!hintsEnabled)}
-                className={['settings-switch', hintsEnabled ? 'settings-switch--on' : ''].join(' ')}
-              >
-                <span className="settings-switch__track" aria-hidden="true">
-                  <span className="settings-switch__thumb" />
-                </span>
-                <span className="settings-switch__label">{hintsEnabled ? labels.hintsOn : labels.hintsOff}</span>
-              </button>
-            </div>
-
-            {entries.length === 0 ? (
-              <div className="rounded-xl border border-[#b9955f66] bg-[#2c2013] px-3 py-2 text-xs text-[#d8c18f]">{labels.empty}</div>
-            ) : (
-              <ul className="no-scrollbar max-h-[48dvh] space-y-2 overflow-y-auto pr-1">
-                {entries.map((entry) => (
-                  <li key={`history-${entry.id}`}>
-                    <button
-                      type="button"
-                      onClick={() => setModalEntry(entry)}
-                      className="w-full rounded-xl border border-[#b7945e70] bg-[#2b1f13d8] px-3 py-2 text-left"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="num-grobold text-[11px] font-semibold text-[#f0deb2]">#{entry.roundId}</span>
-                        <span className="num-grobold text-[10px] text-[#c9b180]">{formatClockTime(entry.timestamp, language)}</span>
-                      </div>
-                      <div className="mt-1 flex items-center justify-between gap-2">
-                        <span className="text-[11px] text-[#d7bf8f]">{sideLabels[entry.selectedSide]}</span>
-                        <span className={entry.balanceDelta >= 0 ? 'num-grobold text-[#93e6a8]' : 'num-grobold text-[#ffa7a7]'}>
-                          {entry.balanceDelta >= 0 ? '+' : ''}
-                          {formatNumber(entry.balanceDelta, language)}
-                        </span>
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
         </div>
       ) : null}
 
       {modalEntry ? (
         <div
-          className="fixed inset-0 z-[70] flex items-end bg-[#050402bf] p-3 sm:items-center sm:justify-center"
+          className="settings-menu__overlay settings-menu__overlay--detail"
           onClick={() => setModalEntry(null)}
         >
           <div
-            className="w-full max-w-sm rounded-3xl border border-[#bc9a6275] bg-[#1e160df4] p-4 text-xs text-[#e8d7af] shadow-2xl"
+            className="history-detail-card"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="ritual-title text-sm text-[#f5e4b8]">
-                {labels.round} <span className="num-grobold">#{modalEntry.roundId}</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setModalEntry(null)}
-                className="rounded-full border border-[#b4925c73] px-2 py-1 text-xs text-[#ceb989]"
-              >
-                {labels.close}
-              </button>
-            </div>
+            <div className="settings-menu__rail" aria-hidden="true" />
 
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-              <span>{labels.time}</span>
-              <span className="num-grobold text-right">{formatClockTime(modalEntry.timestamp, language)}</span>
-              <span>{labels.outcome}</span>
-              <span className="text-right">{sideLabels[modalEntry.selectedSide]}</span>
-              <span>{labels.bet}</span>
-              <span className="num-grobold text-right">{formatNumber(modalEntry.betAmount, language)}</span>
-              <span>{labels.coefficient}</span>
-              <span className="num-grobold text-right">x{formatCoefficient(modalEntry.coefficient, language)}</span>
-              <span>{labels.result}</span>
-              <span className="text-right">{sideLabels[modalEntry.roundResult]}</span>
-              <span>{labels.payout}</span>
-              <span className="num-grobold text-right">{formatNumber(modalEntry.payout, language)}</span>
+            <div className="history-detail-card__content">
+              <div className="history-detail-card__header">
+                <h3 className="ritual-title history-detail-card__title">
+                  {labels.round} <span className="num-grobold">#{modalEntry.roundId}</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setModalEntry(null)}
+                  className="settings-menu__close"
+                >
+                  {labels.close}
+                </button>
+              </div>
+
+              <div className="history-detail-card__grid">
+                <span>{labels.time}</span>
+                <span className="num-grobold text-right">{formatClockTime(modalEntry.timestamp, language)}</span>
+                <span>{labels.outcome}</span>
+                <span className="text-right">{sideLabels[modalEntry.selectedSide]}</span>
+                <span>{labels.bet}</span>
+                <span className="num-grobold text-right">{formatNumber(modalEntry.betAmount, language)}</span>
+                <span>{labels.coefficient}</span>
+                <span className="num-grobold text-right">x{formatCoefficient(modalEntry.coefficient, language)}</span>
+                <span>{labels.result}</span>
+                <span className="text-right">{sideLabels[modalEntry.roundResult]}</span>
+                <span>{labels.payout}</span>
+                <span className="num-grobold text-right">{formatNumber(modalEntry.payout, language)}</span>
+              </div>
             </div>
           </div>
         </div>

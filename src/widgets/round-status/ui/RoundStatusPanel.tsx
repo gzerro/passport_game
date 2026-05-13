@@ -10,27 +10,7 @@ interface RoundStatusPanelProps {
   language: Language;
 }
 
-const guideManImageSrc = `${import.meta.env.BASE_URL}man.png`;
-const tooltipImageSrc = `${import.meta.env.BASE_URL}tooltip.png`;
-
-const labelsByLanguage: Record<
-  Language,
-  {
-    chooseAmount: string;
-    chooseOutcome: string;
-    waiting: string;
-    noBet: string;
-    win: string;
-    lose: string;
-    guideTitle: string;
-    guideAmount: string;
-    guideOutcome: string;
-    guideWaiting: string;
-    guideWin: string;
-    guideLose: string;
-    guideNoBet: string;
-  }
-> = {
+const labelsByLanguage: Record<Language, { chooseAmount: string; chooseOutcome: string; waiting: string; noBet: string; win: string; lose: string }> = {
   ru: {
     chooseAmount: 'ВЫБЕРИТЕ СУММУ',
     chooseOutcome: 'ВЫБЕРИТЕ ИСХОД',
@@ -38,13 +18,6 @@ const labelsByLanguage: Record<
     noBet: 'РАУНД БЕЗ СТАВКИ',
     win: 'ПОБЕДА',
     lose: 'ПРОИГРЫШ',
-    guideTitle: 'Инспектор',
-    guideAmount: 'Выбери размер ставки справа, затем проверь документы.',
-    guideOutcome: 'Теперь реши, пропустить человека или развернуть.',
-    guideWaiting: 'Решение принято. Ждем итог проверки.',
-    guideWin: 'Верное решение. Баланс обновлен.',
-    guideLose: 'Не совпало. Следующий раунд даст новый шанс.',
-    guideNoBet: 'Ставка не была сделана. Готовься к следующему раунду.',
   },
   en: {
     chooseAmount: 'CHOOSE AMOUNT',
@@ -53,17 +26,16 @@ const labelsByLanguage: Record<
     noBet: 'ROUND WITHOUT BET',
     win: 'WIN',
     lose: 'LOSS',
-    guideTitle: 'Inspector',
-    guideAmount: 'Pick a bet on the right, then check the documents.',
-    guideOutcome: 'Now decide whether to approve or deny the person.',
-    guideWaiting: 'Decision logged. Waiting for the inspection result.',
-    guideWin: 'Correct call. Balance has been updated.',
-    guideLose: 'No match. The next round is a new chance.',
-    guideNoBet: 'No bet was placed. Get ready for the next round.',
   },
 };
 
-export const RoundStatusPanel = ({ stage, secondsLeft, currentRoundEntry, currentBet, language }: RoundStatusPanelProps) => {
+export const RoundStatusPanel = ({
+  stage,
+  secondsLeft,
+  currentRoundEntry,
+  currentBet,
+  language,
+}: RoundStatusPanelProps) => {
   const labels = labelsByLanguage[language];
   const statusLabel = (() => {
     if (stage === 'betting') {
@@ -80,21 +52,6 @@ export const RoundStatusPanel = ({ stage, secondsLeft, currentRoundEntry, curren
 
     return currentRoundEntry.balanceDelta >= 0 ? labels.win : labels.lose;
   })();
-  const guideCopy = (() => {
-    if (stage === 'betting') {
-      return currentBet === 0 ? labels.guideAmount : labels.guideOutcome;
-    }
-
-    if (stage === 'resolving') {
-      return labels.guideWaiting;
-    }
-
-    if (!currentRoundEntry) {
-      return labels.guideNoBet;
-    }
-
-    return currentRoundEntry.balanceDelta >= 0 ? labels.guideWin : labels.guideLose;
-  })();
 
   return (
     <section className="status-panel">
@@ -108,17 +65,6 @@ export const RoundStatusPanel = ({ stage, secondsLeft, currentRoundEntry, curren
             00:00
           </p>
         )}
-
-        <div className="status-panel__desktop-guide" aria-hidden="true">
-          <img src={guideManImageSrc} alt="" className="status-panel__guide-man" />
-          <div className="status-panel__guide-speech">
-            <img src={tooltipImageSrc} alt="" className="status-panel__guide-speech-bg" />
-            <div className="status-panel__guide-speech-content">
-              <p className="status-panel__guide-speech-title">{labels.guideTitle}</p>
-              <p className="status-panel__guide-speech-copy">{guideCopy}</p>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );

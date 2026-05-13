@@ -18,6 +18,7 @@ import { Language } from '@/shared/i18n';
 import { BetControls } from '@/widgets/bet-controls';
 import { HistoryPanel } from '@/widgets/history-panel';
 import { AncientObjectStage } from '@/widgets/passport-stage';
+import { getGuideManSpeech } from '@/widgets/passport-stage/lib/guide-man-speech';
 import { RoundStatusPanel } from '@/widgets/round-status';
 import {
   bootLoaderTimeoutMs,
@@ -41,6 +42,9 @@ const sideLabelsByLanguage: Record<Language, Record<BetSide, string>> = {
     no: 'Outcome 2',
   },
 };
+
+const desktopGuideManImageSrc = `${import.meta.env.BASE_URL}man.png`;
+const desktopGuideTooltipImageSrc = `${import.meta.env.BASE_URL}tooltip.png`;
 
 const GameScreen = ({
   language,
@@ -180,6 +184,9 @@ const GameScreen = ({
     [history, roundId, stage],
   );
   const sideLabels = sideLabelsByLanguage[language];
+  const showDesktopGuide = true;
+  const showCenterGuideMan = showStartupGuideMan && selectedSide === null && stage === 'betting';
+  const guideSpeech = useMemo(() => getGuideManSpeech(roundId, language), [language, roundId]);
   const handleSelectChip = (chip: typeof selectedChip): void => {
     if (chip !== selectedChip) {
       setShowStartupGuideMan(false);
@@ -233,7 +240,7 @@ const GameScreen = ({
               currentBet={currentBet}
               language={language}
               hintsEnabled={hintsEnabled}
-              showGuideMan={showStartupGuideMan && selectedSide === null && stage === 'betting'}
+              showGuideMan={showCenterGuideMan}
               onHintsEnabledChange={onHintsEnabledChange}
             />
           </div>
@@ -252,6 +259,19 @@ const GameScreen = ({
             language={language}
           />
         </footer>
+
+        {showDesktopGuide ? (
+          <div className="desktop-guide-overlay" aria-hidden="true">
+            <img src={desktopGuideManImageSrc} alt="" className="desktop-guide-overlay__man" />
+            <div className="desktop-guide-overlay__speech">
+              <img src={desktopGuideTooltipImageSrc} alt="" className="desktop-guide-overlay__speech-bg" />
+              <div className="desktop-guide-overlay__speech-content">
+                <p className="desktop-guide-overlay__speech-title">{guideSpeech.title}</p>
+                <p className="desktop-guide-overlay__speech-copy">{guideSpeech.copy}</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <BalanceTopUpModal

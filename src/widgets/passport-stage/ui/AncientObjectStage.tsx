@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BetSide, HistoryEntry, StageIndicator } from '@/entities/game';
 import { Language } from '@/shared/i18n';
 import { formatCoefficient, formatNumber } from '@/shared/lib/formatters';
+import { getGuideManSpeech } from '../lib/guide-man-speech';
 
 interface AncientObjectStageProps {
   roundId: number;
@@ -45,53 +46,6 @@ const sideLabelByLanguage: Record<Language, Record<BetSide, string>> = {
     yes: 'Approve',
     no: 'Deny',
   },
-};
-
-const guideManSpeechVariantsByLanguage: Record<Language, readonly { title: string; copy: string }[]> = {
-  ru: [
-    {
-      title: 'Сделай выбор',
-      copy: 'Пропускай или отказывай. За правильный выбор получишь награду.',
-    },
-    {
-      title: 'Решай внимательно',
-      copy: 'Выбирай, кого пропустить, а кого развернуть. Верное решение приносит награду.',
-    },
-    {
-      title: 'Выбери исход',
-      copy: 'Одобряй или отказывай. Если угадаешь правильно, получишь выплату.',
-    },
-    {
-      title: 'Проверь человека',
-      copy: 'Реши, впускать его или нет. За точный выбор идет награда.',
-    },
-    {
-      title: 'Прими решение',
-      copy: 'Пропуск или отказ определяй по ситуации. Правильный исход дает награду.',
-    },
-  ],
-  en: [
-    {
-      title: 'Make a Choice',
-      copy: 'Approve or deny the person. A correct choice rewards you.',
-    },
-    {
-      title: 'Decide Carefully',
-      copy: 'Choose who gets through and who is turned away. A correct call pays out.',
-    },
-    {
-      title: 'Pick the Outcome',
-      copy: 'Approve or deny the entrant. Guess right and you get the reward.',
-    },
-    {
-      title: 'Check the Person',
-      copy: 'Decide whether to let them in or refuse entry. A precise choice brings a reward.',
-    },
-    {
-      title: 'Make the Call',
-      copy: 'Judge whether the person should pass or be denied. The right outcome pays.',
-    },
-  ],
 };
 
 const passportFirstNames = [
@@ -623,10 +577,9 @@ export const AncientObjectStage = ({
   const choicePersonKey = `${roundId}-${objectId}-${stage}-${activeWalkSide ?? 'idle'}`;
   const sceneLabels = sceneLabelsByLanguage[language];
   const sideLabels = sideLabelByLanguage[language];
-  const guideManSpeechVariants = guideManSpeechVariantsByLanguage[language];
   const guideManSpeech = useMemo(
-    () => pickBySeed(guideManSpeechVariants, getSeededGenerator(roundId + 2401)),
-    [guideManSpeechVariants, roundId],
+    () => getGuideManSpeech(roundId, language),
+    [language, roundId],
   );
   const passportProfile = useMemo(() => buildPassportProfile(roundId, objectId, language), [language, objectId, roundId]);
   const visiblePassportStampSide = isResultScene
