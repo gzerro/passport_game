@@ -22,7 +22,19 @@ function reflectsNativeImplementation(fn: unknown): boolean {
   }
 }
 
-function verifyCdpTrapApisOriginal(): boolean {
+/** На сенсорных браузерах/WebView часто не-[native code] у Worker/Blob/console без открытых DevTools — режим только для анти-ложных срабатываний. */
+function shouldUseMobileRelaxedDevToolsTraps(): boolean {
+  if (typeof window === 'undefined' || typeof matchMedia === 'undefined') {
+    return false;
+  }
+  try {
+    return matchMedia('(pointer: coarse)').matches === true;
+  } catch {
+    return false;
+  }
+}
+
+function verifyCdpTrapApisOriginal(relaxedMobile: boolean): boolean {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return true;
   }
@@ -41,14 +53,16 @@ function verifyCdpTrapApisOriginal(): boolean {
     document.getElementById,
   ];
 
-  if (typeof Blob !== 'undefined') {
-    required.push(Blob);
-  }
-  if (typeof Worker !== 'undefined') {
-    required.push(Worker);
-  }
-  if (typeof URL !== 'undefined' && URL.createObjectURL && URL.revokeObjectURL) {
-    required.push(URL.createObjectURL, URL.revokeObjectURL);
+  if (!relaxedMobile) {
+    if (typeof Blob !== 'undefined') {
+      required.push(Blob);
+    }
+    if (typeof Worker !== 'undefined') {
+      required.push(Worker);
+    }
+    if (typeof URL !== 'undefined' && URL.createObjectURL && URL.revokeObjectURL) {
+      required.push(URL.createObjectURL, URL.revokeObjectURL);
+    }
   }
 
   for (const fn of required) {
@@ -57,12 +71,13 @@ function verifyCdpTrapApisOriginal(): boolean {
     }
   }
 
-  if (!reflectsNativeImplementation(console.log) || !reflectsNativeImplementation(console.debug)) {
-    return false;
-  }
-
-  if (typeof console.context === 'function' && !reflectsNativeImplementation(console.context)) {
-    return false;
+  if (!relaxedMobile) {
+    if (!reflectsNativeImplementation(console.log) || !reflectsNativeImplementation(console.debug)) {
+      return false;
+    }
+    if (typeof console.context === 'function' && !reflectsNativeImplementation(console.context)) {
+      return false;
+    }
   }
 
   return true;
@@ -132,9 +147,10 @@ export function mountDevToolsBlockOverlay(): void {
 }
 
 /** browserscan-подобная ловушка: лишнее чтение name у Error после вывода в консоль */
-export function runCdpTrap1(onDetected?: OnCdpDetected): void {
+export function runCdpTrap1(onDetected?: OnCdpDetected, relaxedMobile = false): void {
   const trapObject = new Error();
   let accessCount = 0;
+  const extraReadThreshold = relaxedMobile ? 2 : 1;
 
   Object.defineProperty(trapObject, 'name', {
     get(): string {
@@ -147,7 +163,7 @@ export function runCdpTrap1(onDetected?: OnCdpDetected): void {
   console.log(trapObject);
 
   const maybeDetect = (): void => {
-    if (accessCount > 1) {
+    if (accessCount > extraReadThreshold) {
       onDetected?.();
     }
   };
@@ -189,9 +205,10 @@ export function runCdpTrap2(onDetected?: OnCdpDetected): void {
 }
 
 /** gosuslugi-подобная ловушка: лишние вызовы toString у RegExp при сериализации в консоли */
-export function runCdpTrapRegexpToString(onDetected?: OnCdpDetected): void {
+export function runCdpTrapRegexpToString(onDetected?: OnCdpDetected, relaxedMobile = false): void {
   const trapObject = /./;
   let accessCount = 0;
+  const extraReadThreshold = relaxedMobile ? 2 : 1;
   const originalToString = trapObject.toString.bind(trapObject) as () => string;
 
   trapObject.toString = function toStringTrap(this: RegExp): string {
@@ -202,7 +219,7 @@ export function runCdpTrapRegexpToString(onDetected?: OnCdpDetected): void {
   console.log(trapObject);
 
   const maybeDetect = (): void => {
-    if (accessCount > 1) {
+    if (accessCount > extraReadThreshold) {
       onDetected?.();
     }
   };
@@ -215,7 +232,7 @@ export function runCdpTrapRegexpToString(onDetected?: OnCdpDetected): void {
 }
 
 /** Worker с `debugger`; при связке с открытыми DevTools интервал тормозит — heartbeat приходит позже порога */
-export function runAdvancedDebuggerCheck(onDetected?: OnCdpDetected): void {
+export function runAdvancedDebuggerCheck(onDetected?: OnCdpDetected, relaxedMobile = false): void {
   if (typeof Worker === 'undefined' || typeof Blob === 'undefined' || typeof URL.createObjectURL !== 'function') {
     return;
   }
@@ -235,7 +252,7 @@ export function runAdvancedDebuggerCheck(onDetected?: OnCdpDetected): void {
     blobUrl = URL.createObjectURL(blob);
     const worker = new Worker(blobUrl);
 
-    finishDebuggerWorkerSetup(worker, blobUrl, onDetected);
+    finishDebuggerWorkerSetup(worker, blobUrl, onDetected, relaxedMobile);
   } catch {
     if (blobUrl !== undefined) {
       URL.revokeObjectURL(blobUrl);
@@ -243,7 +260,15 @@ export function runAdvancedDebuggerCheck(onDetected?: OnCdpDetected): void {
   }
 }
 
-function finishDebuggerWorkerSetup(worker: Worker, url: string, onDetected?: OnCdpDetected): void {
+function finishDebuggerWorkerSetup(
+  worker: Worker,
+  url: string,
+  onDetected: OnCdpDetected | undefined,
+  relaxedMobile: boolean
+): void {
+  const startedSlackMs = relaxedMobile ? 1600 : 700;
+  const heartbeatSlackMs = relaxedMobile ? 950 : 380;
+  let sawHeartbeat = false;
   let timeoutId: number | undefined;
   let finished = false;
 
@@ -271,18 +296,21 @@ function finishDebuggerWorkerSetup(worker: Worker, url: string, onDetected?: OnC
     if (timeoutId !== undefined) {
       window.clearTimeout(timeoutId);
     }
+    const ms = sawHeartbeat ? heartbeatSlackMs : startedSlackMs;
     timeoutId = window.setTimeout(() => {
       onDetected?.();
       teardown();
-    }, 200);
+    }, ms);
   };
 
   worker.onmessage = (msg: MessageEvent<string>): void => {
     switch (msg.data) {
       case 'started':
+        sawHeartbeat = false;
         armDetectDeadline();
         break;
       case 'heartbeat':
+        sawHeartbeat = true;
         armDetectDeadline();
         break;
       default:
@@ -298,17 +326,19 @@ function finishDebuggerWorkerSetup(worker: Worker, url: string, onDetected?: OnC
 }
 
 export function installCdpTraps(onDetected?: OnCdpDetected): void {
+  const relaxedMobile = shouldUseMobileRelaxedDevToolsTraps();
+
   const notify = (): void => {
     onDetected?.();
   };
 
-  if (!verifyCdpTrapApisOriginal()) {
+  if (!verifyCdpTrapApisOriginal(relaxedMobile)) {
     notify();
     return;
   }
 
-  runCdpTrap1(notify);
+  runCdpTrap1(notify, relaxedMobile);
   runCdpTrap2(notify);
-  runCdpTrapRegexpToString(notify);
-  runAdvancedDebuggerCheck(notify);
+  runCdpTrapRegexpToString(notify, relaxedMobile);
+  runAdvancedDebuggerCheck(notify, relaxedMobile);
 }
